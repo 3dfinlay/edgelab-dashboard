@@ -34,6 +34,11 @@
     -webkit-font-smoothing: antialiased;
     touch-action: manipulation;
   }
+  body::before { content: ""; position: fixed; top: 0; right: 0;
+    width: min(100vw, 520px); height: 420px; pointer-events: none; z-index: 0;
+    background: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22500%22%20height%3D%22400%22%20viewBox%3D%220%200%20500%20400%22%3E%0A%3Cg%20fill%3D%22none%22%20stroke%3D%22rgba%28255%2C255%2C255%2C0.055%29%22%20stroke-width%3D%221.2%22%3E%0A%3Cpath%20d%3D%22M320%2040%20L400%2085%20L400%20175%20L320%20220%20L240%20175%20L240%2085%20Z%22%2F%3E%0A%3Cpath%20d%3D%22M320%2040%20L320%20130%20L240%20175%20M320%20130%20L400%20175%20M320%20130%20L320%20220%22%2F%3E%0A%3Cpath%20d%3D%22M410%20120%20L470%20155%20L470%20235%20L410%20270%20L350%20235%20L350%20155%20Z%22%2F%3E%0A%3Cpath%20d%3D%22M410%20120%20L410%20195%20L350%20230%20M410%20195%20L470%20230%22%2F%3E%0A%3Cpath%20d%3D%22M250%20180%20L310%20215%20L310%20295%20L250%20330%20L190%20295%20L190%20215%20Z%22%2F%3E%0A%3Cpath%20d%3D%22M250%20180%20L250%20255%20L190%20290%20M250%20255%20L310%20290%22%2F%3E%0A%3Cpath%20d%3D%22M380%20230%20L430%20260%20L430%20320%20L380%20350%20L330%20320%20L330%20260%20Z%22%2F%3E%0A%3Cpath%20d%3D%22M180%2060%20L230%2090%20L230%20150%20L180%20180%20L130%20150%20L130%2090%20Z%22%2F%3E%0A%3Cpath%20d%3D%22M440%2020%20L480%2043%20L480%2093%20L440%20116%20L400%2093%20L400%2043%20Z%22%2F%3E%0A%3C%2Fg%3E%0A%3Cg%20fill%3D%22none%22%20stroke%3D%22rgba%28240%2C185%2C11%2C0.05%29%22%20stroke-width%3D%221%22%3E%0A%3Cpath%20d%3D%22M320%2040%20L400%2085%20L400%20175%20L320%20220%20L240%20175%20L240%2085%20Z%22%2F%3E%0A%3C%2Fg%3E%0A%3C%2Fsvg%3E") top right / contain no-repeat;
+    opacity: 0.9; }
+  #dash { position: relative; z-index: 1; }
   /* ---------- lock ---------- */
   #lock { min-height: 100dvh; display: flex; align-items: center; justify-content: center;
           padding: 24px; padding-bottom: calc(24px + env(safe-area-inset-bottom)); }
@@ -354,12 +359,26 @@ function drawChart(hist, up) {
   grad.addColorStop(0, up ? "rgba(74,222,128,0.22)" : "rgba(248,113,113,0.22)");
   grad.addColorStop(1, "rgba(0,0,0,0)");
   ctx.beginPath();
-  vals.forEach((v, i) => i ? ctx.lineTo(X(i), Y(v)) : ctx.moveTo(X(i), Y(v)));
+  ctx.moveTo(X(0), Y(vals[0]));
+  for (let i = 1; i < vals.length - 1; i++) {
+    const xc = (X(i) + X(i + 1)) / 2, yc = (Y(vals[i]) + Y(vals[i + 1])) / 2;
+    ctx.quadraticCurveTo(X(i), Y(vals[i]), xc, yc);
+  }
+  ctx.lineTo(X(vals.length - 1), Y(vals[vals.length - 1]));
   ctx.lineTo(W, H); ctx.lineTo(0, H); ctx.closePath();
   ctx.fillStyle = grad; ctx.fill();
-  // line
-  ctx.beginPath();
-  vals.forEach((v, i) => i ? ctx.lineTo(X(i), Y(v)) : ctx.moveTo(X(i), Y(v)));
+  // line: tight smooth curve (quadratic through midpoints --
+  // like linear with rounded corners)
+  const smoothPath = () => {
+    ctx.beginPath();
+    ctx.moveTo(X(0), Y(vals[0]));
+    for (let i = 1; i < vals.length - 1; i++) {
+      const xc = (X(i) + X(i + 1)) / 2, yc = (Y(vals[i]) + Y(vals[i + 1])) / 2;
+      ctx.quadraticCurveTo(X(i), Y(vals[i]), xc, yc);
+    }
+    ctx.lineTo(X(vals.length - 1), Y(vals[vals.length - 1]));
+  };
+  smoothPath();
   ctx.strokeStyle = col; ctx.lineWidth = 2 * dpr;
   ctx.lineJoin = "round"; ctx.lineCap = "round"; ctx.stroke();
   // session-start baseline
