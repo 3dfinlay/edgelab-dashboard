@@ -2,87 +2,198 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>EdgeLab — Live</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0a0a0a">
+<title>EdgeLab</title>
 <style>
-  * { box-sizing: border-box; }
-  body { margin: 0; background: #141414; color: #e8e8e8;
-         font-family: -apple-system, "Segoe UI", Roboto, sans-serif; }
-  /* lock screen */
-  #lock { min-height: 100vh; display: flex; align-items: center; justify-content: center; }
-  #lock .card { background: #1f1f1f; border: 1px solid #2e2e2e; border-radius: 14px;
-          padding: 32px 28px; width: min(92vw, 360px); text-align: center; }
-  #lock h1 { margin: 0 0 6px; font-size: 22px; }
-  #lock p { color: #9a9a9a; font-size: 14px; margin: 0 0 18px; }
-  #lock input[type=password] { width: 100%; padding: 12px 14px; font-size: 16px;
-      background: #141414; border: 1px solid #3a3a3a; border-radius: 8px;
-      color: #fff; outline: none; margin-bottom: 12px; }
-  #lock button { width: 100%; padding: 12px; font-size: 16px; font-weight: 600;
-      background: #e8e8e8; color: #141414; border: none; border-radius: 8px; cursor: pointer; }
-  #lock button:disabled { opacity: .55; cursor: wait; }
-  #lock .err { color: #ff6b6b; font-size: 13px; min-height: 20px; margin-top: 10px; }
-  /* dashboard */
-  #dash { display: none; max-width: 900px; margin: 0 auto; padding: 16px; }
-  .hero { background: #1f1f1f; border: 1px solid #2e2e2e; border-radius: 14px;
-          padding: 24px; margin-bottom: 16px; border-left: 4px solid #f0b90b; }
-  .hero h2 { margin: 0 0 4px; font-size: 13px; color: #9a9a9a; text-transform: uppercase; letter-spacing: 1px; }
-  .hero .eq { font-size: 38px; font-weight: 700; margin: 4px 0; }
-  .hero .pnl { font-size: 20px; font-weight: 600; }
-  .pos { color: #4ade80; } .neg { color: #f87171; } .zero { color: #9a9a9a; }
-  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
-  @media (min-width: 600px) { .grid { grid-template-columns: repeat(4, 1fr); } }
-  .stat { background: #1f1f1f; border: 1px solid #2e2e2e; border-radius: 10px; padding: 14px; }
-  .stat .k { font-size: 12px; color: #9a9a9a; text-transform: uppercase; letter-spacing: .5px; }
-  .stat .v { font-size: 22px; font-weight: 700; margin-top: 4px; }
-  .section { background: #1f1f1f; border: 1px solid #2e2e2e; border-radius: 10px;
-             padding: 16px; margin-bottom: 16px; }
-  .section h3 { margin: 0 0 12px; font-size: 15px; border-left: 3px solid #f0b90b; padding-left: 10px; }
-  .trade { display: flex; justify-content: space-between; align-items: center;
-           padding: 10px 0; border-bottom: 1px solid #2a2a2a; font-size: 14px; }
-  .trade:last-child { border-bottom: none; }
-  .trade .sym { font-weight: 600; }
-  .trade .meta { color: #9a9a9a; font-size: 12px; }
-  #chart { width: 100%; height: 180px; background: #1a1a1a; border-radius: 8px; }
-  .updated { text-align: center; color: #9a9a9a; font-size: 12px; padding: 12px; }
-  .live-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%;
-              background: #4ade80; margin-right: 6px; animation: pulse 2s infinite; }
-  @keyframes pulse { 50% { opacity: .4; } }
+  :root {
+    --bg: #0a0a0a;
+    --surface: #141414;
+    --surface-2: #1c1c1c;
+    --border: #262626;
+    --text: #f5f5f5;
+    --text-2: #a3a3a3;
+    --text-3: #6e6e6e;
+    --green: #4ade80;
+    --red: #f87171;
+    --gold: #f0b90b;
+    --purple: #a97bff;
+    --radius: 16px;
+    --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+    --mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html { overscroll-behavior-y: none; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: var(--font);
+    font-variant-numeric: tabular-nums;
+    -webkit-font-smoothing: antialiased;
+    touch-action: manipulation;
+  }
+  /* ---------- lock ---------- */
+  #lock { min-height: 100dvh; display: flex; align-items: center; justify-content: center;
+          padding: 24px; padding-bottom: calc(24px + env(safe-area-inset-bottom)); }
+  #lock .card { background: var(--surface); border: 1px solid var(--border);
+    border-radius: 20px; padding: 32px 28px; width: min(92vw, 340px); text-align: center; }
+  #lock .mark { width: 44px; height: 44px; border-radius: 12px; margin: 0 auto 16px;
+    background: linear-gradient(135deg, #f0b90b, #b8860b); }
+  #lock h1 { margin: 0 0 6px; font-size: 20px; font-weight: 700; letter-spacing: -0.01em; }
+  #lock p { color: var(--text-2); font-size: 14px; margin: 0 0 20px; line-height: 1.45; }
+  #lock input[type=password] { width: 100%; padding: 13px 14px; font-size: 16px;
+    background: var(--bg); border: 1px solid var(--border); border-radius: 12px;
+    color: #fff; outline: none; margin-bottom: 12px; font-family: var(--font); }
+  #lock input[type=password]:focus { border-color: #4a4a4a; }
+  #lock button { width: 100%; padding: 13px; font-size: 16px; font-weight: 600;
+    background: var(--text); color: var(--bg); border: none; border-radius: 12px;
+    cursor: pointer; font-family: var(--font); }
+  #lock button:active { transform: scale(0.98); }
+  #lock button:disabled { opacity: .5; }
+  #lock .err { color: var(--red); font-size: 13px; min-height: 20px; margin-top: 10px; }
+  /* ---------- app frame ---------- */
+  #dash { display: none; }
+  .topbar {
+    position: sticky; top: 0; z-index: 10;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: calc(12px + env(safe-area-inset-top)) 16px 12px;
+    background: rgba(10, 10, 10, 0.82);
+    -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+    border-bottom: 1px solid var(--border);
+  }
+  .brand { font-weight: 800; font-size: 15px; letter-spacing: 0.12em; }
+  .live { display: inline-flex; align-items: center; gap: 6px; font-size: 12px;
+    font-weight: 600; color: var(--text-2); }
+  .live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green);
+    animation: pulse 2.4s ease-in-out infinite; }
+  @keyframes pulse { 50% { opacity: 0.35; } }
+  main { max-width: 520px; margin: 0 auto; padding: 16px 16px calc(32px + env(safe-area-inset-bottom)); }
+  /* ---------- hero ---------- */
+  .hero { background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); margin-bottom: 12px; overflow: hidden;
+    border-left: 3px solid var(--gold); }
+  .hero.sol { border-left-color: var(--purple); }
+  .hero-body { padding: 20px 20px 8px; }
+  .kicker { font-size: 11px; font-weight: 600; color: var(--text-3);
+    text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 6px; }
+  .equity { font-size: 40px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.1; }
+  .pnl-line { display: flex; align-items: baseline; gap: 8px; margin-top: 6px; }
+  .pnl-val { font-size: 17px; font-weight: 700; }
+  .pnl-sub { font-size: 13px; color: var(--text-3); }
+  .pos { color: var(--green); } .neg { color: var(--red); }
+  #chart { display: block; width: 100%; height: 120px; margin-top: 8px; }
+  .chart-empty { display: flex; align-items: center; justify-content: center;
+    height: 120px; color: var(--text-3); font-size: 13px; margin-top: 8px; }
+  /* ---------- stat grid ---------- */
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+  .stat { background: var(--surface); border: 1px solid var(--border);
+    border-radius: 14px; padding: 14px 16px; }
+  .stat .k { font-size: 11px; font-weight: 600; color: var(--text-3);
+    text-transform: uppercase; letter-spacing: 0.08em; }
+  .stat .v { font-size: 21px; font-weight: 700; margin-top: 5px; letter-spacing: -0.01em; }
+  .stat .s { font-size: 12px; color: var(--text-3); margin-top: 2px; }
+  /* ---------- sections ---------- */
+  .section { background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 4px 16px; margin-bottom: 12px; }
+  .section.sol { border-left: 3px solid var(--purple); }
+  .section > h3 { display: flex; align-items: center; gap: 10px;
+    font-size: 14px; font-weight: 700; margin: 0; padding: 14px 0 6px; }
+  .section > h3::before { content: ""; width: 3px; height: 16px; border-radius: 2px;
+    background: var(--gold); flex: none; }
+  .section.sol > h3::before { background: var(--purple); }
+  .section > h3 .count { margin-left: auto; font-size: 12px; font-weight: 600;
+    color: var(--text-3); background: var(--surface-2); border-radius: 20px;
+    padding: 2px 10px; }
+  .row { display: flex; align-items: center; justify-content: space-between;
+    gap: 12px; padding: 12px 0; border-top: 1px solid var(--border); }
+  .row:first-of-type { border-top: none; }
+  .row .main { min-width: 0; }
+  .row .sym { font-weight: 700; font-size: 14px; }
+  .row .addr { font-family: var(--mono); font-size: 11px; color: var(--text-3);
+    margin-top: 2px; user-select: all; }
+  .row .meta { font-size: 12px; color: var(--text-2); margin-top: 3px;
+    display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .chip { font-family: var(--mono); font-size: 10px; font-weight: 700;
+    letter-spacing: 0.06em; background: var(--surface-2); color: var(--text-2);
+    border: 1px solid var(--border); border-radius: 6px; padding: 2px 7px;
+    text-transform: uppercase; white-space: nowrap; }
+  .row .val { font-size: 15px; font-weight: 700; white-space: nowrap; }
+  .row .val .x { display: block; font-size: 11px; font-weight: 600;
+    color: var(--text-3); text-align: right; margin-top: 2px; }
+  .empty { padding: 18px 0; text-align: center; color: var(--text-3); font-size: 13px; }
+  /* ---------- activity ---------- */
+  .event { display: flex; gap: 10px; padding: 9px 0; border-top: 1px solid var(--border);
+    font-size: 12px; }
+  .event:first-of-type { border-top: none; }
+  .event .t { font-family: var(--mono); color: var(--text-3); flex: none; }
+  .event .m { font-family: var(--mono); color: var(--text-2); overflow: hidden;
+    text-overflow: ellipsis; white-space: nowrap; }
+  /* ---------- footer ---------- */
+  .foot { text-align: center; color: var(--text-3); font-size: 12px; padding: 8px 0 4px;
+    display: flex; align-items: center; justify-content: center; gap: 6px; }
+  /* ---------- transitions (rare events only) ---------- */
+  #dash.enter { animation: enter 220ms ease-out; }
+  @keyframes enter { from { opacity: 0; transform: translateY(10px); } }
+  @media (prefers-reduced-motion: reduce) {
+    .live-dot { animation: none; }
+    #dash.enter { animation: none; }
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .row:hover { background: rgba(255,255,255,0.02); }
+  }
 </style>
 </head>
 <body>
 <div id="lock">
   <div class="card">
+    <div class="mark"></div>
     <h1>EdgeLab</h1>
-    <p>This dashboard is private. Enter the password to view live data.</p>
+    <p>Private trading dashboard.<br>Enter the password to view live data.</p>
     <input type="password" id="pw" placeholder="Password" autocomplete="current-password">
     <button id="go">Unlock</button>
     <div class="err" id="err"></div>
   </div>
 </div>
 <div id="dash">
-  <div class="hero" id="hero">
-    <h2><span class="live-dot"></span>Live Equity</h2>
-    <div class="eq" id="equity">—</div>
-    <div class="pnl" id="pnl">—</div>
+  <div class="topbar">
+    <div class="brand">EDGELAB</div>
+    <div class="live"><span class="live-dot"></span><span id="chain">BNB CHAIN</span></div>
   </div>
-  <div class="grid" id="stats"></div>
-  <div class="section">
-    <h3>Equity Curve</h3>
-    <canvas id="chart"></canvas>
-  </div>
-  <div class="section">
-    <h3>Open Positions</h3>
-    <div id="positions"><p style="color:#9a9a9a">No open positions</p></div>
-  </div>
-  <div class="section">
-    <h3>Recent Closed Trades</h3>
-    <div id="closed"></div>
-  </div>
-  <div class="updated" id="updated">—</div>
+  <main>
+    <section class="hero" id="hero">
+      <div class="hero-body">
+        <div class="kicker">Total equity</div>
+        <div class="equity" id="equity">—</div>
+        <div class="pnl-line">
+          <span class="pnl-val" id="pnl">—</span>
+          <span class="pnl-sub">session</span>
+        </div>
+      </div>
+      <div id="chartWrap"><canvas id="chart"></canvas></div>
+    </section>
+    <div class="grid" id="stats"></div>
+    <section class="section" id="posSection">
+      <h3>Open positions <span class="count" id="posCount">0</span></h3>
+      <div id="positions"></div>
+    </section>
+    <section class="section" id="solSection" style="display:none">
+      <h3>Solana <span class="count" id="solCount"></span></h3>
+      <div id="solBody"></div>
+    </section>
+    <section class="section">
+      <h3>Recent trades <span class="count" id="closedCount">0</span></h3>
+      <div id="closed"></div>
+    </section>
+    <section class="section">
+      <h3>Activity</h3>
+      <div id="events"></div>
+    </section>
+    <div class="foot"><span class="live-dot"></span><span id="updated">—</span></div>
+  </main>
 </div>
 <script>
 const LS_KEY = "edgelab_pw";
 let aesKey = null;
+const $ = id => document.getElementById(id);
 
 function b64ToBytes(s) {
   const bin = atob(s); const b = new Uint8Array(bin.length);
@@ -101,106 +212,182 @@ async function decryptPayload(payload, password) {
   const pt = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, aesKey, ct);
   return JSON.parse(new TextDecoder().decode(pt));
 }
-function fmtUSD(x) {
-  const s = x < 0 ? "-" : (x > 0 ? "+" : "");
-  return s + "$" + Math.abs(x).toFixed(2);
+const usd0 = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
+const usd2 = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD",
+  minimumFractionDigits: 2, maximumFractionDigits: 2 });
+function fmtSignedUSD(x) {
+  const a = Math.abs(x);
+  const s = a < 0.005 ? "$0.00" : usd2.format(a);
+  return (x > 0.004 ? "+" : x < -0.004 ? "−" : "") + s;
 }
-function pnlClass(x) { return x > 0 ? "pos" : (x < 0 ? "neg" : "zero"); }
+function pnlClass(x) { return x > 0.004 ? "pos" : (x < -0.004 ? "neg" : ""); }
+function esc(s) { const d = document.createElement("div"); d.textContent = s ?? ""; return d.innerHTML; }
+function ago(iso) {
+  const t = new Date(iso).getTime(); if (isNaN(t)) return "";
+  const s = Math.max(0, (Date.now() - t) / 1000);
+  if (s < 60) return "just now";
+  if (s < 3600) return Math.floor(s / 60) + "m ago";
+  if (s < 86400) return Math.floor(s / 3600) + "h ago";
+  return new Date(iso).toLocaleDateString();
+}
+function shortAddr(a) {
+  a = (a || "").toLowerCase();
+  return a.length > 12 ? a.slice(0, 6) + "…" + a.slice(-4) : a;
+}
+function exitChip(exit) {
+  const e = (exit || "").toUpperCase().replace(/_/g, " ");
+  return `<span class="chip">${esc(e)}</span>`;
+}
 
 function render(d) {
+  const up = (d.pnl_usd || 0) >= 0;
   // Hero
-  document.getElementById("equity").textContent = "$" + (d.equity_usd || 0).toFixed(2);
-  const pnlEl = document.getElementById("pnl");
-  pnlEl.textContent = fmtUSD(d.pnl_usd || 0) + " (" + (d.pnl_pct || 0).toFixed(1) + "%)";
-  pnlEl.className = "pnl " + pnlClass(d.pnl_usd || 0);
+  $("equity").textContent = usd0.format(d.equity_usd || 0);
+  const pnlEl = $("pnl");
+  pnlEl.textContent = `${fmtSignedUSD(d.pnl_usd || 0)} (${(d.pnl_usd >= 0 ? "+" : "−")}${Math.abs(d.pnl_pct || 0).toFixed(1)}%)`;
+  pnlEl.className = "pnl-val " + pnlClass(d.pnl_usd || 0);
+  drawChart(d.equity_hist || [], up);
   // Stats
   const closed = d.closed || [];
-  const wins = closed.filter(t => (t.realized_usd || 0) > 0).length;
-  const wr = closed.length ? Math.round(wins / closed.length * 100) : 0;
-  document.getElementById("stats").innerHTML = [
-    ["Balance", "$" + (d.balance_usd || 0).toFixed(2), ""],
-    ["Trades", closed.length, ""],
-    ["Win Rate", wr + "%", wr >= 50 ? "pos" : (wr > 0 ? "neg" : "zero")],
-    ["BNB", "$" + (d.bnb_usd || 0).toFixed(0), ""],
-  ].map(([k, v, c]) => `<div class="stat"><div class="k">${k}</div><div class="v ${c}">${v}</div></div>`).join("");
+  const wins = closed.filter(t => (t.realized_usd || 0) > 0.004).length;
+  const wr = closed.length ? (wins / closed.length * 100) : 0;
+  const st = d.stats || {};
+  const realized = closed.reduce((s, t) => s + (t.realized_usd || 0), 0);
+  $("stats").innerHTML = [
+    ["Win rate", wr.toFixed(0) + "%", `${wins}/${closed.length}`, ""],
+    ["Trades", String(closed.length), "closed", ""],
+    ["Realized", fmtSignedUSD(realized), "session", pnlClass(realized)],
+    ["Rugs", String(st.rugs ?? 0), "caught", (st.rugs || 0) > 0 ? "neg" : ""],
+  ].map(([k, v, s, c]) =>
+    `<div class="stat"><div class="k">${k}</div><div class="v ${c}">${esc(v)}</div><div class="s">${esc(s)}</div></div>`
+  ).join("");
   // Positions
   const pos = d.positions || [];
-  document.getElementById("positions").innerHTML = pos.length ? pos.map(p =>
-    `<div class="trade"><div><div class="sym">${esc(p.symbol || "?")}</div>
-     <div class="meta">${esc(p.token || "").slice(0, 10)}…</div></div>
-     <div class="${pnlClass(p.unrealized_usd || 0)}">${fmtUSD(p.unrealized_usd || 0)}</div></div>`
-  ).join("") : '<p style="color:#9a9a9a">No open positions</p>';
-  // Closed
-  document.getElementById("closed").innerHTML = closed.slice(0, 20).map(t => {
-    const usd = t.realized_usd || 0;
-    return `<div class="trade"><div><div class="sym">${esc(t.symbol || "?")}</div>
-      <div class="meta">${esc(t.exit || "")} · ${esc((t.last_at || "").slice(5, 16))}</div></div>
-      <div class="${pnlClass(usd)}">${fmtUSD(usd)}</div></div>`;
-  }).join("") || '<p style="color:#9a9a9a">No trades yet</p>';
-  // Chart
-  drawChart(d.equity_hist || []);
-  // Updated
-  const now = new Date();
-  document.getElementById("updated").innerHTML =
-    `<span class="live-dot"></span>Live · updated ${now.toLocaleTimeString()} · auto-refresh 60s`;
+  $("posCount").textContent = pos.length;
+  $("positions").innerHTML = pos.length ? pos.map(p => {
+    const u = p.unreal_usd || 0;
+    return `<div class="row"><div class="main">
+      <div class="sym">${esc(p.symbol && !p.symbol.startsWith("0x") ? p.symbol : shortAddr(p.token))}</div>
+      <div class="addr">${esc(p.token || "")}</div>
+      <div class="meta">${p.m_now ? exitChip(p.m_now.toFixed(2) + "x") : ""}${p.age_min != null ? `<span>${p.age_min}m in</span>` : ""}</div>
+    </div><div class="val ${pnlClass(u)}">${fmtSignedUSD(u)}</div></div>`;
+  }).join("") : `<div class="empty">No open positions</div>`;
+  // Solana (only when active)
+  const sol = d.solana || {};
+  const solActive = (sol.equity_usd || 0) > 1 || (sol.positions || []).length > 0;
+  $("solSection").style.display = solActive ? "" : "none";
+  if (solActive) {
+    $("solSection").classList.add("sol");
+    const sp = sol.positions || [];
+    $("solCount").textContent = usd0.format(sol.equity_usd || 0);
+    $("solBody").innerHTML =
+      `<div class="row"><div class="main"><div class="sym">Equity</div>
+       <div class="meta"><span>${(sol.balance_sol || 0).toFixed(3)} SOL</span></div></div>
+       <div class="val ${pnlClass(sol.pnl_usd || 0)}">${fmtSignedUSD(sol.pnl_usd || 0)}</div></div>` +
+      (sp.length ? sp.map(p =>
+        `<div class="row"><div class="main"><div class="sym">${esc(p.symbol || shortAddr(p.token))}</div>
+         <div class="addr">${esc(p.token || "")}</div></div>
+         <div class="val ${pnlClass(p.unreal_usd || 0)}">${fmtSignedUSD(p.unreal_usd || 0)}</div></div>`
+      ).join("") : "");
+  }
+  // Closed trades
+  const list = closed.slice(0, 25);
+  $("closedCount").textContent = closed.length;
+  $("closed").innerHTML = list.length ? list.map(t => {
+    const v = t.realized_usd || 0;
+    const name = (t.symbol && t.symbol.startsWith("0x")) ? shortAddr(t.symbol) : (t.symbol || shortAddr(t.token));
+    return `<div class="row"><div class="main">
+      <div class="sym">${esc(name)}</div>
+      <div class="meta">${exitChip(t.exit)}<span>${ago(t.last_at)}</span></div>
+    </div><div class="val ${pnlClass(v)}">${fmtSignedUSD(v)}</div></div>`;
+  }).join("") : `<div class="empty">No trades yet this session</div>`;
+  // Events
+  const ev = (d.events || []).slice(0, 6);
+  $("events").innerHTML = ev.length ? ev.map(e =>
+    `<div class="event"><span class="t">${esc(e.t || "")}</span><span class="m">${esc(e.msg || "")}</span></div>`
+  ).join("") : `<div class="empty">No recent activity</div>`;
+  // Footer
+  const age = d.data_age_s != null ? Math.round(d.data_age_s) : null;
+  $("updated").textContent = age != null
+    ? `Live · data ${age}s old · refreshes every 60s`
+    : `Live · refreshes every 60s`;
 }
-function esc(s) { const d = document.createElement("div"); d.textContent = s; return d.innerHTML; }
 
-function drawChart(hist) {
-  const c = document.getElementById("chart"), ctx = c.getContext("2d");
-  const W = c.width = c.offsetWidth * 2, H = c.height = 360;
-  ctx.clearRect(0, 0, W, H);
+function drawChart(hist, up) {
+  const wrap = $("chartWrap"), c = $("chart");
   const vals = hist.map(p => p.e).filter(v => typeof v === "number");
-  if (vals.length < 2) { ctx.fillStyle = "#9a9a9a"; ctx.font = "28px sans-serif";
-    ctx.fillText("No history yet", 30, H / 2); return; }
+  if (vals.length < 2) {
+    wrap.innerHTML = `<div class="chart-empty">Not enough history yet</div>`;
+    return;
+  }
+  if (!c.isConnected) { wrap.innerHTML = `<canvas id="chart"></canvas>`; }
+  const cv = $("chart"), ctx = cv.getContext("2d");
+  const dpr = Math.min(3, window.devicePixelRatio || 1);
+  const W = cv.clientWidth * dpr, H = 120 * dpr;
+  cv.width = W; cv.height = H;
   const mn = Math.min(...vals), mx = Math.max(...vals), rg = (mx - mn) || 1;
-  const col = vals[vals.length - 1] >= vals[0] ? "#4ade80" : "#f87171";
-  ctx.strokeStyle = col; ctx.lineWidth = 4; ctx.beginPath();
-  vals.forEach((v, i) => {
-    const x = 20 + i / (vals.length - 1) * (W - 40);
-    const y = H - 30 - (v - mn) / rg * (H - 60);
-    i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
-  });
-  ctx.stroke();
+  const X = i => (i / (vals.length - 1)) * W;
+  const Y = v => H * 0.88 - ((v - mn) / rg) * H * 0.7;
+  const col = up ? "#4ade80" : "#f87171";
+  ctx.clearRect(0, 0, W, H);
+  // area fill
+  const grad = ctx.createLinearGradient(0, 0, 0, H);
+  grad.addColorStop(0, up ? "rgba(74,222,128,0.22)" : "rgba(248,113,113,0.22)");
+  grad.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.beginPath();
+  vals.forEach((v, i) => i ? ctx.lineTo(X(i), Y(v)) : ctx.moveTo(X(i), Y(v)));
+  ctx.lineTo(W, H); ctx.lineTo(0, H); ctx.closePath();
+  ctx.fillStyle = grad; ctx.fill();
+  // line
+  ctx.beginPath();
+  vals.forEach((v, i) => i ? ctx.lineTo(X(i), Y(v)) : ctx.moveTo(X(i), Y(v)));
+  ctx.strokeStyle = col; ctx.lineWidth = 2 * dpr;
+  ctx.lineJoin = "round"; ctx.lineCap = "round"; ctx.stroke();
+  // session-start baseline
+  const y0 = Y(vals[0]);
+  ctx.setLineDash([4 * dpr, 4 * dpr]);
+  ctx.strokeStyle = "rgba(255,255,255,0.18)"; ctx.lineWidth = 1 * dpr;
+  ctx.beginPath(); ctx.moveTo(0, y0); ctx.lineTo(W, y0); ctx.stroke();
+  ctx.setLineDash([]);
+  // last point
+  ctx.beginPath();
+  ctx.arc(X(vals.length - 1), Y(vals[vals.length - 1]), 3 * dpr, 0, 7);
+  ctx.fillStyle = col; ctx.fill();
 }
 
-let password = null;
+let password = null, timer = null;
 async function fetchAndRender() {
   if (!password) return;
   try {
-    const r = await fetch("data.json?_=" + Date.now());
+    const r = await fetch("data.json?_=" + Date.now(), { cache: "no-store" });
     if (!r.ok) throw new Error("fetch " + r.status);
-    const payload = await r.json();
-    const data = await decryptPayload(payload, password);
-    render(data);
+    render(await decryptPayload(await r.json(), password));
   } catch (e) { console.warn("refresh failed:", e); }
 }
 async function unlock(pw) {
-  const err = document.getElementById("err"), go = document.getElementById("go");
+  const err = $("err"), go = $("go");
   err.textContent = ""; go.disabled = true; go.textContent = "Unlocking…";
   try {
-    // Test decrypt with data.json
-    const r = await fetch("data.json?_=" + Date.now());
+    const r = await fetch("data.json?_=" + Date.now(), { cache: "no-store" });
     if (!r.ok) throw new Error("no data");
-    const payload = await r.json();
     aesKey = null;
-    await decryptPayload(payload, pw); // throws on wrong password
+    await decryptPayload(await r.json(), pw);
     password = pw;
     try { localStorage.setItem(LS_KEY, pw); } catch (e) {}
-    document.getElementById("lock").style.display = "none";
-    document.getElementById("dash").style.display = "block";
+    $("lock").style.display = "none";
+    const dash = $("dash");
+    dash.style.display = "block";
+    dash.classList.add("enter");
     await fetchAndRender();
-    setInterval(fetchAndRender, 60000);
+    if (!timer) timer = setInterval(fetchAndRender, 60000);
   } catch (e) {
     go.disabled = false; go.textContent = "Unlock";
     err.textContent = "Wrong password or no data. Try again.";
     aesKey = null;
   }
 }
-document.getElementById("go").addEventListener("click",
-  () => unlock(document.getElementById("pw").value));
-document.getElementById("pw").addEventListener("keydown",
-  e => { if (e.key === "Enter") document.getElementById("go").click(); });
+$("go").addEventListener("click", () => unlock($("pw").value));
+$("pw").addEventListener("keydown", e => { if (e.key === "Enter") $("go").click(); });
 (function () {
   let saved = null;
   try { saved = localStorage.getItem(LS_KEY); } catch (e) {}
