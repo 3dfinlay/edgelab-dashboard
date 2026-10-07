@@ -79,11 +79,6 @@
   .hero { background: transparent; border: none;
     border-radius: 0; margin-bottom: 4px; overflow: visible;
     position: relative; }
-  .hero::after { content: ""; position: absolute; top: -120px; right: -80px;
-    width: 340px; height: 340px; pointer-events: none;
-    mix-blend-mode: screen;
-    background: radial-gradient(closest-side,
-      rgba(240,185,11,0.28), rgba(240,185,11,0.08) 55%, transparent 72%); }
   .hero > * { position: relative; z-index: 1; }
   .chain-badge { display: inline-flex; align-items: center; gap: 8px;
     font-size: 14px; font-weight: 800; color: var(--gold);
