@@ -195,10 +195,6 @@
       <h3>Open positions <span class="count" id="posCount">0</span></h3>
       <div id="positions"></div>
     </section>
-    <section class="section" id="solSection" style="display:none">
-      <h3>Solana <span class="count" id="solCount"></span></h3>
-      <div id="solBody"></div>
-    </section>
     <section class="section">
       <h3>Recent trades <span class="count" id="closedCount">0</span></h3>
       <div id="closed"></div>
@@ -293,24 +289,6 @@ function render(d) {
       <div class="meta">${p.m_now ? exitChip(p.m_now.toFixed(2) + "x") : ""}${p.age_min != null ? `<span>${p.age_min}m in</span>` : ""}</div>
     </div><div class="val ${pnlClass(u)}">${fmtSignedUSD(u)}</div></div>`;
   }).join("") : `<div class="empty">No open positions</div>`;
-  // Solana (only when active)
-  const sol = d.solana || {};
-  const solActive = (sol.equity_usd || 0) > 1 || (sol.positions || []).length > 0;
-  $("solSection").style.display = solActive ? "" : "none";
-  if (solActive) {
-    $("solSection").classList.add("sol");
-    const sp = sol.positions || [];
-    $("solCount").textContent = usd0.format(sol.equity_usd || 0);
-    $("solBody").innerHTML =
-      `<div class="row"><div class="main"><div class="sym">Equity</div>
-       <div class="meta"><span>${(sol.balance_sol || 0).toFixed(3)} SOL</span></div></div>
-       <div class="val ${pnlClass(sol.pnl_usd || 0)}">${fmtSignedUSD(sol.pnl_usd || 0)}</div></div>` +
-      (sp.length ? sp.map(p =>
-        `<div class="row"><div class="main"><div class="sym">${esc(p.symbol || shortAddr(p.token))}</div>
-         <div class="addr">${esc(p.token || "")}</div></div>
-         <div class="val ${pnlClass(p.unreal_usd || 0)}">${fmtSignedUSD(p.unreal_usd || 0)}</div></div>`
-      ).join("") : "");
-  }
   // Closed trades
   const list = closed.slice(0, 25);
   $("closedCount").textContent = closed.length;
