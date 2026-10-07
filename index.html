@@ -74,7 +74,7 @@
   .live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green);
     animation: pulse 2.4s ease-in-out infinite; }
   @keyframes pulse { 50% { opacity: 0.35; } }
-  main { max-width: 520px; margin: 0 auto; padding: 16px 16px calc(32px + env(safe-area-inset-bottom)); }
+  main { max-width: 520px; margin: 0 auto; padding: calc(48px + env(safe-area-inset-top)) 16px calc(32px + env(safe-area-inset-bottom)); }
   /* ---------- hero ---------- */
   .hero { background: transparent; border: none;
     border-radius: 0; margin-bottom: 4px; overflow: visible;
