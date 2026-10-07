@@ -351,8 +351,9 @@ function drawChart(hist, up) {
   const col = up ? "#4ade80" : "#f87171";
   ctx.clearRect(0, 0, W, H);
   // area fill
-  const grad = ctx.createLinearGradient(0, 0, 0, H);
-  grad.addColorStop(0, up ? "rgba(74,222,128,0.22)" : "rgba(248,113,113,0.22)");
+  const grad = ctx.createLinearGradient(0, 0, 0, H * 1.6);
+  grad.addColorStop(0, up ? "rgba(74,222,128,0.42)" : "rgba(248,113,113,0.42)");
+  grad.addColorStop(0.45, up ? "rgba(74,222,128,0.18)" : "rgba(248,113,113,0.18)");
   grad.addColorStop(1, "rgba(0,0,0,0)");
   ctx.beginPath();
   ctx.moveTo(X(0), Y(vals[0]));
