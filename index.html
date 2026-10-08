@@ -18,7 +18,7 @@
     --text-2: #a3a3a3;
     --text-3: #6e6e6e;
     --green: #2dd4bf;
-    --red: #f472b6;
+    --red: #fb923c;
     --gold: #f0b90b;
     --purple: #a97bff;
     --radius: 16px;
@@ -351,12 +351,12 @@ function drawChart(hist, up) {
   const mn = Math.min(...vals), mx = Math.max(...vals), rg = (mx - mn) || 1;
   const X = i => (i / (vals.length - 1)) * W;
   const Y = v => H * 0.88 - ((v - mn) / rg) * H * 0.7;
-  const col = up ? "#2dd4bf" : "#f472b6";
+  const col = up ? "#2dd4bf" : "#fb923c";
   ctx.clearRect(0, 0, W, H);
   // area fill
   const grad = ctx.createLinearGradient(0, 0, 0, H);
-  grad.addColorStop(0, up ? "rgba(74,222,128,0.35)" : "rgba(248,113,113,0.35)");
-  grad.addColorStop(0.7, up ? "rgba(74,222,128,0.06)" : "rgba(248,113,113,0.06)");
+  grad.addColorStop(0, up ? "rgba(45,212,191,0.35)" : "rgba(251,146,60,0.35)");
+  grad.addColorStop(0.7, up ? "rgba(45,212,191,0.06)" : "rgba(251,191,36,0.06)");
   grad.addColorStop(1, "rgba(0,0,0,0)");
   ctx.beginPath();
   ctx.moveTo(X(0), Y(vals[0]));
@@ -438,7 +438,7 @@ function spawnConfetti(x, y, W, H) {
     confetti.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 2,
       life: 1, decay: 0.008 + Math.random() * 0.012,
       size: 2 + Math.random() * 3.5,
-      color: ["#2dd4bf","#99f6e4","#22d3ee","#ccfbf1"][i % 4],
+      color: ["#2dd4bf","#5eead4","#22d3ee","#99f6e4"][i % 4],
       rot: Math.random() * Math.PI, vr: (Math.random() - 0.5) * 0.3 });
   }
 }
