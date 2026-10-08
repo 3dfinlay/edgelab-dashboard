@@ -107,6 +107,9 @@
   .chart-empty { display: flex; align-items: center; justify-content: center;
     height: 120px; color: var(--text-3); font-size: 13px; margin-top: 8px; }
   /* ---------- stat grid ---------- */
+  .chart-fade { height: 120px; margin-top: -120px; pointer-events: none;
+    position: relative; z-index: 0; }
+  #stats { position: relative; z-index: 1; }
   .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
   .stat { background: rgba(28,28,28,0.85); border: 1px solid #2e2e2e;
     border-radius: 18px; padding: 18px; backdrop-filter: blur(8px); }
@@ -196,6 +199,7 @@
       </div>
       <div id="chartWrap"><canvas id="chart"></canvas></div>
     </section>
+    <div class="chart-fade" id="chartFade"></div>
     <div class="grid" id="stats"></div>
     <section class="section" id="posSection">
       <h3>Open positions <span class="count" id="posCount">0</span></h3>
@@ -277,6 +281,9 @@ function render(d) {
   pnlEl.textContent = `${fmtSignedUSD(d.pnl_usd || 0)} (${(d.pnl_usd >= 0 ? "+" : "−")}${Math.abs(d.pnl_pct || 0).toFixed(1)}%)`;
   pnlEl.className = "pnl-val " + pnlClass(d.pnl_usd || 0);
   drawChart(d.equity_hist || [], up);
+  const fadeEl = $("chartFade");
+  if (fadeEl) fadeEl.style.background =
+    `linear-gradient(to bottom, ${up ? "rgba(74,222,128,0.14)" : "rgba(248,113,113,0.14)"}, transparent)`;
   // Stats — use server aggregates (d.closed is truncated to 20 for display)
   const st = d.stats || {};
   const closed = d.closed || [];
@@ -343,10 +350,10 @@ function drawChart(hist, up) {
   const col = up ? "#4ade80" : "#f87171";
   ctx.clearRect(0, 0, W, H);
   // area fill
-  const grad = ctx.createLinearGradient(0, 0, 0, H * 1.6);
+  const grad = ctx.createLinearGradient(0, 0, 0, H);
   grad.addColorStop(0, up ? "rgba(74,222,128,0.42)" : "rgba(248,113,113,0.42)");
-  grad.addColorStop(0.45, up ? "rgba(74,222,128,0.18)" : "rgba(248,113,113,0.18)");
-  grad.addColorStop(1, "rgba(0,0,0,0)");
+  grad.addColorStop(0.55, up ? "rgba(74,222,128,0.14)" : "rgba(248,113,113,0.14)");
+  grad.addColorStop(1, up ? "rgba(74,222,128,0)" : "rgba(248,113,113,0)");
   ctx.beginPath();
   ctx.moveTo(X(0), Y(vals[0]));
   for (let i = 1; i < vals.length - 1; i++) {
