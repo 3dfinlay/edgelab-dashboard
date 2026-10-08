@@ -80,8 +80,8 @@
     border-radius: 0; margin-bottom: 4px; overflow: visible;
     position: relative; }
   .hero > * { position: relative; z-index: 1; }
-  .hero-bg { position: absolute; top: -48px; left: 50%; width: 100vw;
-    transform: translateX(-50%); height: 290px;
+  .hero-bg { position: absolute; top: calc(-48px - env(safe-area-inset-top)); left: 50%; width: 100vw;
+    transform: translateX(-50%); height: calc(290px + 48px + env(safe-area-inset-top));
     background-image: url('hero-bg.webp');
     background-size: cover; background-position: center top;
     background-repeat: no-repeat;
