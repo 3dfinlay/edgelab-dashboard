@@ -287,7 +287,7 @@ function render(d) {
     ["Win rate", wr.toFixed(0) + "%", `${nWins}/${nClosed}`, ""],
     ["Trades", String(nClosed), "closed", ""],
     ["Closed P&L", fmtSignedUSD(realized), "banked", pnlClass(realized)],
-    ["Rugs", String(st.rugs ?? 0), "caught", (st.rugs || 0) > 0 ? "neg" : ""],
+    ["Rugs", String(st.rugs ?? 0) + ((st.rugs || 0) > 0 ? " 💀" : ""), "caught", (st.rugs || 0) > 0 ? "neg" : ""],
   ].map(([k, v, s, c]) =>
     `<div class="stat"><div class="k">${k}</div><div class="v ${c}">${esc(v)}</div><div class="s">${esc(s)}</div></div>`
   ).join("");
