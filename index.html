@@ -402,7 +402,7 @@ function render(d) {
     ["Win rate", wr.toFixed(0) + "%", `${nWins}/${nClosed}`, ""],
     ["Trades", String(nClosed), "closed", ""],
     ["Closed P&L", fmtSignedUSD(realized), "banked", pnlClass(realized)],
-    ["Rugs", String(st.rugs ?? 0) + ((st.rugs || 0) > 0 ? " 💀" : ""), "caught", (st.rugs || 0) > 0 ? "neg" : ""],
+    ["Rugs dodged", String(st.rug_bans ?? 0), (st.rugs || 0) > 0 ? (st.rugs + " caught 💀") : "none caught", ""],
   ].map(([k, v, s, c]) =>
     `<div class="stat"><div class="k">${k}</div><div class="v ${c}">${esc(v)}</div><div class="s">${esc(s)}</div></div>`
   ).join("");
@@ -628,13 +628,11 @@ function statCards(items) {
 }
 function renderWalletStats(d) {
   const st = d.stats || {};
-  const bnbPx = d.bnb_usd || 0;
-  const bal = d.balance_bnb || 0;
   const un = st.total_unrealized_usd;
   const gas = st.total_gas_usd;
   const open = (d.positions || []).length;
   $("walletStats").innerHTML = statCards([
-    ["Cash", bal.toFixed(4) + " BNB", bnbPx ? usd2.format(bal * bnbPx) : "", ""],
+    ["Rugs dodged", String(st.rug_bans ?? 0), (st.deployers_denied ?? 0) + " deployers denied", ""],
     ["Unrealized", un != null ? fmtSignedUSD(un) : "—", "in open positions", pnlClass(un || 0)],
     ["Gas paid", gas != null ? usd2.format(gas) : "—", "this session", ""],
     ["Open", String(open), open === 1 ? "position" : "positions", ""],
