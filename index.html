@@ -98,17 +98,6 @@
     border-radius: 0; margin-bottom: 4px; overflow: visible;
     position: relative; }
   .hero > * { position: relative; z-index: 1; }
-  .hero-bg { position: absolute; top: calc(-48px - env(safe-area-inset-top)); left: 50%; width: 100vw;
-    transform: translateX(-50%); height: calc(290px + 48px + env(safe-area-inset-top));
-    background-image: url('hero-bg.webp');
-    background-size: cover; background-position: center top;
-    background-repeat: no-repeat;
-    opacity: 0.7; z-index: 0; pointer-events: none; filter: brightness(0.7);
-    -webkit-mask-image: linear-gradient(to bottom, black 80%, transparent 100%);
-    mask-image: linear-gradient(to bottom, black 80%, transparent 100%); }
-  @media (max-width: 480px) {
-    .hero-bg { height: 200px; background-position: center 15%; }
-  }
   .chain-top-right { position: absolute; top: 0; right: 0; text-align: right;
     z-index: 5; padding-top: 24px; padding-right: 16px; }
   .chain-badge { display: inline-flex; align-items: center; gap: 4.8px;
@@ -299,7 +288,6 @@
       <div class="bnb-price" id="bnbPrice">—</div>
     </div>
     <section class="hero" id="hero">
-      <div class="hero-bg"></div>
       <div class="hero-body">
         <div class="kicker">Wallet balance</div>
         <div class="equity-row"><div class="equity" id="equity">—</div><div class="equity-bnb" id="equityBnb"></div></div>
@@ -328,6 +316,7 @@
       <div class="grid" id="tw20Stats"></div>
       <div id="tw20Trades"></div>
     </section>
+    <div id="liveWallets"></div>
     </div>
     <div class="tabpage" id="tab-trades" hidden>
       <div class="grid" id="stats"></div>
@@ -442,6 +431,7 @@ function render(d) {
   renderChartLegend(up, d.test_wallet, d.test_wallet_20);
   renderTestWallet(d.test_wallet, {sec: "twSection", rule: "twRule", stats: "twStats", trades: "twTrades", addr: "twAddr"}, 50);
   renderTestWallet(d.test_wallet_20, {sec: "tw20Section", rule: "tw20Rule", stats: "tw20Stats", trades: "tw20Trades", addr: "tw20Addr"}, 20);
+  renderLiveWallets(d.live_wallets || []);
   // Stats — use server aggregates (d.closed is truncated to 20 for display)
   const st = d.stats || {};
   const closed = d.closed || [];
@@ -874,6 +864,42 @@ function renderTestWallet(tw, ids, startUsd) {
 let settingsDirty = {};        // key -> new value (only changed settings)
 let settingsSchemaVer = null;  // schema version the DOM was built for
 const settingControls = {};    // key -> {def, el, row}
+
+function renderLiveWallets(wallets) {
+  // Live pilot sections (Phase 1): one section per live wallet,
+  // built dynamically (the pool size is not fixed at page-build
+  // time). Stats, trades, and the BscScan address row come from the
+  // shared renderTestWallet; open positions render as a small list
+  // above the trades. Empty list (pre-pilot) renders nothing.
+  const host = $("liveWallets");
+  host.innerHTML = "";
+  (wallets || []).forEach((w, i) => {
+    if (!w || !w.present) return;
+    const ids = {sec: "liveSec" + i, rule: "liveRule" + i,
+                 stats: "liveStats" + i, trades: "liveTrades" + i,
+                 addr: "liveAddr" + i};
+    const sec = document.createElement("section");
+    sec.className = "section";
+    sec.id = ids.sec;
+    sec.innerHTML = `<h3>Live wallet <span class="count" id="${ids.rule}"></span></h3>`
+      + `<div id="${ids.addr}"></div>`
+      + `<div class="grid" id="${ids.stats}"></div>`
+      + `<div id="livePos${i}"></div>`
+      + `<div id="${ids.trades}"></div>`;
+    host.appendChild(sec);
+    renderTestWallet(w, ids, w.seed_usd || 0);
+    const pos = w.positions || [];
+    $("livePos" + i).innerHTML = pos.length ? pos.map(p => {
+      const tok = p.token_full || p.token || "";
+      const rem = Math.round((p.remaining || 0) * 100);
+      return `<div class="row"><div class="main">`
+        + `<div class="sym">${esc(shortAddr(p.token || ""))}<a class="dex-link" href="https://www.geckoterminal.com/bsc/tokens/${esc(tok)}" target="_blank" rel="noopener">GeckoTerminal</a></div>`
+        + `<div class="addr">${esc(tok)}</div>`
+        + `<div class="meta">${esc(p.strategy || "scalp")} · ${rem}% open</div>`
+        + `</div><div class="val">${(p.size_bnb || 0).toFixed(4)} BNB</div></div>`;
+    }).join("") : "";
+  });
+}
 
 function settingRow(s) {
   const row = document.createElement("div");
