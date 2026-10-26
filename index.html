@@ -56,6 +56,17 @@
   #refreshBtn:disabled { opacity: .55; cursor: default; }
   #refreshBtn .ric { display: inline-block; font-size: 17px; line-height: 1; }
   #refreshBtn.busy .ric { animation: rspin 0.7s linear infinite; }
+  /* ---------- emergency pause (2026-10-26, per user) ---------- */
+  #pauseBtn { display: block; width: 100%; padding: 14px; margin: 0 0 12px;
+    font-family: var(--font); font-size: 18px; font-weight: 800;
+    color: #fff; background: #c0392b; border: 0; border-radius: 12px;
+    cursor: pointer; }
+  #pauseBtn:active { transform: scale(0.98); }
+  #pauseBtn.resuming { background: #1e8e3e; }
+  #pauseBanner { padding: 10px; margin: 0 0 12px; text-align: center;
+    font-weight: 800; color: #7b1a12; background: #fdecea;
+    border: 1px solid #e57373; border-radius: 12px; }
+  #pauseBanner[hidden] { display: none; }
   @keyframes rspin { to { transform: rotate(360deg); } }
   /* ---------- lock ---------- */
   #lock { min-height: 100dvh; display: flex; align-items: center; justify-content: center;
@@ -151,6 +162,9 @@
   .section > h3::before { content: ""; width: 3px; height: 16px; border-radius: 2px;
     background: var(--gold); flex: none; }
   .section.sol > h3::before { background: var(--purple); }
+  /* Live pool cards: empty wallets render greyed out until funded. */
+  .section.wallet-disabled { opacity: 0.55; filter: grayscale(0.65); }
+  .wallet-note { font-size: 12px; color: var(--text-3); padding: 2px 0 12px; }
   .section > h3 .count { margin-left: auto; font-size: 12px; font-weight: 600;
     color: var(--text-3); background: var(--surface-2); border-radius: 20px;
     padding: 2px 10px; }
@@ -280,6 +294,8 @@
   </div>
 </div>
 <div id="dash">
+  <button id="pauseBtn" type="button">⏸ Pause trading</button>
+  <div id="pauseBanner" hidden>⏸ Trading paused — no new buys will open. Exits continue. Tap Resume to re-enable.</div>
   <button id="refreshBtn" type="button" aria-label="Refresh all data"><span class="ric">&#10227;</span></button>
   <main>
     <div class="tabpage" id="tab-wallet">
@@ -304,6 +320,7 @@
       <h3>Open positions <span class="count" id="posCount">0</span></h3>
       <div id="positions"></div>
     </section>
+    <div id="liveWalletsActive"></div>
     <section class="section" id="twSection" hidden>
       <h3>Test wallet ($50) <span class="count" id="twRule"></span></h3>
       <div id="twAddr"></div>
@@ -316,7 +333,7 @@
       <div class="grid" id="tw20Stats"></div>
       <div id="tw20Trades"></div>
     </section>
-    <div id="liveWallets"></div>
+    <div id="liveWalletsDisabled"></div>
     </div>
     <div class="tabpage" id="tab-trades" hidden>
       <div class="grid" id="stats"></div>
@@ -418,6 +435,20 @@ function exitChip(exit) {
 
 function render(d) {
   const up = (d.pnl_usd || 0) >= 0;
+  // Emergency pause (2026-10-26, per user): the button routes through
+  // the Telegram bot (the only authenticated channel from this static
+  // page back to the PC); the session reports the flag in data.json,
+  // so the banner and button track the true paused state on every render.
+  const paused = !!d.emergency_paused;
+  const pauseBanner = $("pauseBanner"), pauseBtn = $("pauseBtn");
+  if (pauseBanner) pauseBanner.hidden = !paused;
+  if (pauseBtn) {
+    pauseBtn.textContent = paused ? "▶ Resume trading" : "⏸ Pause trading";
+    pauseBtn.classList.toggle("resuming", paused);
+    pauseBtn.onclick = () => window.open(
+      "https://t.me/LaunchDeskBot_Bot?start=" + (paused ? "resume" : "pause"),
+      "_blank", "noopener");
+  }
   // Hero
   $("equity").textContent = usd0.format(d.equity_usd || 0);
   const bnbPx = d.bnb_usd || 0;
@@ -427,8 +458,17 @@ function render(d) {
   const pnlEl = $("pnl");
   pnlEl.textContent = `${fmtSignedUSD(d.pnl_usd || 0)} (${(d.pnl_usd >= 0 ? "+" : "−")}${Math.abs(d.pnl_pct || 0).toFixed(1)}%)`;
   pnlEl.className = "pnl-val " + pnlClass(d.pnl_usd || 0);
-  drawChart(d.equity_hist || [], up, (d.test_wallet && d.test_wallet.equity_hist) || [], (d.test_wallet_20 && d.test_wallet_20.equity_hist) || []);
-  renderChartLegend(up, d.test_wallet, d.test_wallet_20);
+  // Main chart line: live wallet 1 once it has a trade history, else
+  // the paper wallet. Test-wallet lines are unchanged; no other live
+  // wallet ever gets a chart line. Both histories are BNB, so the
+  // switch is unit-consistent. (A funded-but-not-yet-trading wallet 1
+  // has no history yet, so paper stays main until its first trades.)
+  const w1 = (d.live_wallets || []).find(w => w && w.pool_index === 1);
+  const w1Hist = (w1 && w1.equity_hist && w1.equity_hist.length >= 2) ? w1.equity_hist : null;
+  const mainHist = w1Hist || (d.equity_hist || []);
+  const mainUp = w1Hist ? ((w1.net_usd || 0) >= 0) : up;
+  drawChart(mainHist, mainUp, (d.test_wallet && d.test_wallet.equity_hist) || [], (d.test_wallet_20 && d.test_wallet_20.equity_hist) || []);
+  renderChartLegend(mainUp, d.test_wallet, d.test_wallet_20, w1Hist ? "Live W1" : "BNB");
   renderTestWallet(d.test_wallet, {sec: "twSection", rule: "twRule", stats: "twStats", trades: "twTrades", addr: "twAddr"}, 50);
   renderTestWallet(d.test_wallet_20, {sec: "tw20Section", rule: "tw20Rule", stats: "tw20Stats", trades: "tw20Trades", addr: "tw20Addr"}, 20);
   renderLiveWallets(d.live_wallets || []);
@@ -780,19 +820,19 @@ function renderWalletStats(d) {
   ]);
 }
 /* ================= test wallets ($50 + $20) ================= */
-function renderChartLegend(up, tw, tw20) {
+function renderChartLegend(up, tw, tw20, mainLabel) {
   const legend = $("chartLegend");
   const has50 = tw && tw.present && (tw.equity_hist || []).length >= 2;
   const has20 = tw20 && tw20.present && (tw20.equity_hist || []).length >= 2;
   if (!has50 && !has20) { legend.innerHTML = ""; return; }
-  let html = `<span class="dot" style="background:${up ? "#2dd4bf" : "#fb923c"}"></span>Main (BNB)`;
+  let html = `<span class="dot" style="background:${up ? "#2dd4bf" : "#fb923c"}"></span>Main (${mainLabel || "BNB"})`;
   if (has50) html += `<span class="dot" style="background:${tw.net_usd < 0 ? "#808080" : "#32CD32"}"></span>Test $50 (own scale)`;
   if (has20) html += `<span class="dot" style="background:${tw20.net_usd < 0 ? "#f472b6" : "#3b82f6"}"></span>Test $20 (own scale)`;
   legend.innerHTML = html;
 }
 /* Collapsible recent-trades sections. Each section collapses to its
    header + latest trade so every wallet fits on screen at once (this
-   is what makes a 10-wallet live pool viewable); tap the header to
+   is what makes a 30-wallet live pool viewable); tap the header to
    expand. Choice persists per section in localStorage. Keyed by
    container id, default collapsed, so future wallet sections using
    these renderers inherit the behavior automatically. */
@@ -866,38 +906,62 @@ let settingsSchemaVer = null;  // schema version the DOM was built for
 const settingControls = {};    // key -> {def, el, row}
 
 function renderLiveWallets(wallets) {
-  // Live pilot sections (Phase 1): one section per live wallet,
-  // built dynamically (the pool size is not fixed at page-build
-  // time). Stats, trades, and the BscScan address row come from the
-  // shared renderTestWallet; open positions render as a small list
-  // above the trades. Empty list (pre-pilot) renders nothing.
-  const host = $("liveWallets");
-  host.innerHTML = "";
+  // Live pilot pool cards (Phase 2): one card per pool wallet, split
+  // by activation -- funded wallets render ABOVE the test-wallet
+  // sections, empty wallets BELOW them. A wallet moves containers
+  // the moment its on-chain BNB balance crosses zero. Wallets with
+  // feed data (trading) render the full section via renderTestWallet;
+  // pool-only wallets render a compact balance card. Empty list
+  // (pre-pool) renders nothing.
+  const activeHost = $("liveWalletsActive"), disabledHost = $("liveWalletsDisabled");
+  if (!activeHost || !disabledHost) return;
+  activeHost.innerHTML = ""; disabledHost.innerHTML = "";
   (wallets || []).forEach((w, i) => {
-    if (!w || !w.present) return;
+    if (!w || w.present === false) return;
+    const host = w.activated ? activeHost : disabledHost;
+    const title = w.pool_index ? "Live wallet " + w.pool_index : "Live wallet";
     const ids = {sec: "liveSec" + i, rule: "liveRule" + i,
                  stats: "liveStats" + i, trades: "liveTrades" + i,
                  addr: "liveAddr" + i};
     const sec = document.createElement("section");
-    sec.className = "section";
+    sec.className = "section" + (w.activated ? "" : " wallet-disabled");
     sec.id = ids.sec;
-    sec.innerHTML = `<h3>Live wallet <span class="count" id="${ids.rule}"></span></h3>`
-      + `<div id="${ids.addr}"></div>`
-      + `<div class="grid" id="${ids.stats}"></div>`
-      + `<div id="livePos${i}"></div>`
-      + `<div id="${ids.trades}"></div>`;
-    host.appendChild(sec);
-    renderTestWallet(w, ids, w.seed_usd || 0);
-    const pos = w.positions || [];
-    $("livePos" + i).innerHTML = pos.length ? pos.map(p => {
-      const tok = p.token_full || p.token || "";
-      const rem = Math.round((p.remaining || 0) * 100);
-      return `<div class="row"><div class="main">`
-        + `<div class="sym">${esc(shortAddr(p.token || ""))}<a class="dex-link" href="https://www.geckoterminal.com/bsc/tokens/${esc(tok)}" target="_blank" rel="noopener">GeckoTerminal</a></div>`
-        + `<div class="addr">${esc(tok)}</div>`
-        + `<div class="meta">${esc(p.strategy || "scalp")} · ${rem}% open</div>`
-        + `</div><div class="val">${(p.size_bnb || 0).toFixed(4)} BNB</div></div>`;
-    }).join("") : "";
+    if (w.has_feed) {
+      sec.innerHTML = `<h3>${esc(title)} <span class="count" id="${ids.rule}"></span></h3>`
+        + `<div id="${ids.addr}"></div>`
+        + `<div class="grid" id="${ids.stats}"></div>`
+        + `<div id="livePos${i}"></div>`
+        + `<div id="${ids.trades}"></div>`;
+      host.appendChild(sec);
+      renderTestWallet(w, ids, w.seed_usd || 0);
+      if (!w.activated) $(ids.rule).textContent += " · DISABLED";
+      const pos = w.positions || [];
+      $("livePos" + i).innerHTML = pos.length ? pos.map(p => {
+        const tok = p.token_full || p.token || "";
+        const rem = Math.round((p.remaining || 0) * 100);
+        return `<div class="row"><div class="main">`
+          + `<div class="sym">${esc(shortAddr(p.token || ""))}<a class="dex-link" href="https://www.geckoterminal.com/bsc/tokens/${esc(tok)}" target="_blank" rel="noopener">GeckoTerminal</a></div>`
+          + `<div class="addr">${esc(tok)}</div>`
+          + `<div class="meta">${esc(p.strategy || "scalp")} · ${rem}% open</div>`
+          + `</div><div class="val">${(p.size_bnb || 0).toFixed(4)} BNB</div></div>`;
+      }).join("") : "";
+    } else {
+      const waddr = w.wallet_address || w.address || "";
+      const addrRow = /^0x[0-9a-fA-F]{40}$/.test(waddr)
+        ? `<a class="wallet-addr" href="https://bscscan.com/address/${waddr}" target="_blank" rel="noopener"><img class="bsc-logo" src="${BSC_LOGO}" alt="BscScan">${esc(waddr)}</a>`
+        : "";
+      const bal = (w.balance_bnb != null) ? w.balance_bnb.toFixed(4) + " BNB" : "—";
+      const balUsd = (w.balance_usd != null) ? " (≈ " + usd2.format(w.balance_usd) + ")" : "";
+      const chip = w.activated ? "ACTIVE" : "DISABLED";
+      const note = w.activated ? "" : (w.balance_known === false
+        ? `<div class="wallet-note">Balance unknown — will update on next refresh</div>`
+        : `<div class="wallet-note">Empty · awaiting funding</div>`);
+      sec.innerHTML = `<h3>${esc(title)} <span class="count">${chip}</span></h3>`
+        + addrRow
+        + `<div class="row"><div class="main"><div class="sym">BNB balance</div></div><div class="val">${esc(bal + balUsd)}</div></div>`
+        + note;
+      host.appendChild(sec);
+    }
   });
 }
 
