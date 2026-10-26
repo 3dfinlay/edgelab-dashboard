@@ -168,6 +168,9 @@
   .row { display: flex; align-items: center; justify-content: space-between;
     gap: 12px; padding: 12px 0; border-top: 1px solid var(--border); }
   .row:first-of-type { border-top: none; }
+  .trades-head { cursor: pointer; user-select: none; -webkit-user-select: none; }
+  .trades-head .chev { display: inline-block; width: 14px; color: var(--text-2); }
+  .trades-collapsed .row ~ .row { display: none; }
   .row .main { min-width: 0; }
   .row .sym { font-weight: 700; font-size: 14px; display: flex; align-items: center; gap: 8px; }
   .dex-link { display: inline-flex; align-items: center; opacity: 0.85; flex-shrink: 0; }
@@ -325,7 +328,7 @@
     <div class="tabpage" id="tab-trades" hidden>
       <div class="grid" id="stats"></div>
     <section class="section">
-      <h3>Recent trades <span class="count" id="closedCount">0</span></h3>
+      <h3 class="trades-head" id="closedHead" onclick="toggleTrades('closed')" aria-expanded="false"><span class="chev">▸</span> Recent trades <span class="count" id="closedCount">0</span></h3>
       <div id="closed"></div>
     </section>
     </div>
@@ -474,6 +477,7 @@ function render(d) {
       <div class="meta">${exitChip(t.exit)}<span>${ago(t.last_at)}</span></div>
     </div><div class="val ${pnlClass(v)}">${fmtSignedUSD(v)}</div></div>`;
   }).join("") : `<div class="empty">No trades yet this session</div>`;
+  applyTradesCollapse("closed");
   renderWalletStats(d);
   renderSettings(d.settings);
   // Footer (America/Chicago wall clock per design contract)
@@ -783,6 +787,38 @@ function renderChartLegend(up, tw, tw20) {
   if (has20) html += `<span class="dot" style="background:${tw20.net_usd < 0 ? "#f472b6" : "#3b82f6"}"></span>Test $20 (own scale)`;
   legend.innerHTML = html;
 }
+/* Collapsible recent-trades sections. Each section collapses to its
+   header + latest trade so every wallet fits on screen at once (this
+   is what makes a 10-wallet live pool viewable); tap the header to
+   expand. Choice persists per section in localStorage. Keyed by
+   container id, default collapsed, so future wallet sections using
+   these renderers inherit the behavior automatically. */
+const tradesCollapsed = (() => {
+  const d = {};
+  try { Object.assign(d, JSON.parse(localStorage.getItem("edgelab_trades_collapsed") || "{}")); } catch (e) {}
+  return d;
+})();
+function tradesHeadEl(boxId) {
+  if (boxId === "closed") return $("closedHead");
+  const box = $(boxId);
+  return box ? box.querySelector(".trades-head") : null;
+}
+function applyTradesCollapse(boxId) {
+  const box = $(boxId); if (!box) return;
+  const collapsed = tradesCollapsed[boxId] !== false;
+  box.classList.toggle("trades-collapsed", collapsed);
+  const head = tradesHeadEl(boxId);
+  if (head) {
+    head.setAttribute("aria-expanded", collapsed ? "false" : "true");
+    const ch = head.querySelector(".chev");
+    if (ch) ch.textContent = collapsed ? "▸" : "▾";
+  }
+}
+function toggleTrades(boxId) {
+  tradesCollapsed[boxId] = !(tradesCollapsed[boxId] !== false);
+  try { localStorage.setItem("edgelab_trades_collapsed", JSON.stringify(tradesCollapsed)); } catch (e) {}
+  applyTradesCollapse(boxId);
+}
 function renderTestWallet(tw, ids, startUsd) {
   const sec = $(ids.sec);
   if (!tw || !tw.present) { sec.hidden = true; return; }
@@ -797,7 +833,9 @@ function renderTestWallet(tw, ids, startUsd) {
     ["Trades", String(tw.total_closes != null ? tw.total_closes : 0), `${tw.total_entries != null ? tw.total_entries : 0} entries · ${tw.open_positions || 0} open`, ""],
   ]);
   const list = tw.trades || [];
-  $(ids.trades).innerHTML = list.length ? list.map(t => {
+  const nT = tw.total_closes != null ? tw.total_closes : list.length;
+  const twHead = `<div class="trades-head" onclick="toggleTrades('${ids.trades}')" aria-expanded="false"><span class="chev">▸</span> Recent trades <span class="count">${nT}</span></div>`;
+  $(ids.trades).innerHTML = twHead + (list.length ? list.map(t => {
     const isSym = t.symbol && !t.symbol.startsWith("0x") && t.symbol !== "?";
     const name = isSym ? "$" + t.symbol : shortAddr(t.token);
     return `<div class="row"><div class="main">
@@ -805,7 +843,8 @@ function renderTestWallet(tw, ids, startUsd) {
       <div class="addr">${esc(t.token || "")}</div>
       <div class="meta">${exitChip(t.exit)}<span>${ago(t.last_at)}</span></div>
     </div><div class="val ${pnlClass(t.realized_usd || 0)}">${fmtSignedUSD(t.realized_usd || 0)}</div></div>`;
-  }).join("") : `<div class="empty">No test trades yet</div>`;
+  }).join("") : `<div class="empty">No test trades yet</div>`);
+  applyTradesCollapse(ids.trades);
 }
 /* ================= settings tab ================= */
 let settingsDirty = {};        // key -> new value (only changed settings)
