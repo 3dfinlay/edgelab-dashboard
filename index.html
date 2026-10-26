@@ -498,6 +498,15 @@ function drawChart(hist, up, twHist, tw20Hist) {
   if (hist !== undefined) { lastHist = hist; lastUp = up; lastTwHist = twHist || null; lastTw20Hist = tw20Hist || null; }
   else { hist = lastHist; up = lastUp; twHist = lastTwHist; tw20Hist = lastTw20Hist; }
   if (!hist) return;
+  // Chart window: every line shows only its last 24 hours, current
+  // and future lines alike. The main line is filtered here; wallet
+  // lines are filtered inside drawOwnScaleLine below, so any future
+  // line drawn through it is windowed automatically. Stored lastHist
+  // keeps the full series, so each redraw re-evaluates the rolling
+  // window against the viewer's clock. Points without a numeric
+  // timestamp are kept (fail-open: never blank a line over schema).
+  const win24h = (h) => (h || []).filter(p => typeof p.t !== "number" || p.t >= Date.now() / 1000 - 86400);
+  hist = win24h(hist);
   const wrap = $("chartWrap"), c = $("chart");
   const vals = hist.map(p => p.e).filter(v => typeof v === "number");
   if (vals.length < 2) {
@@ -580,7 +589,7 @@ function drawChart(hist, up, twHist, tw20Hist) {
   // positive color while at/above its start, negative color while
   // underwater.
   const drawOwnScaleLine = (tHist, startUsd, colAbove, colBelow) => {
-    const tvals = (tHist || []).map(p => p.e).filter(v => typeof v === "number");
+    const tvals = win24h(tHist).map(p => p.e).filter(v => typeof v === "number");
     if (tvals.length < 2) return;
     const tmn = Math.min(...tvals), tmx = Math.max(...tvals), trg = (tmx - tmn) || 1;
     const TX = i => (i / (tvals.length - 1)) * W;
