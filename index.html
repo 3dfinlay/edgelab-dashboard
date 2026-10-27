@@ -888,7 +888,7 @@ function renderWalletStats(d) {
   $("walletStats").innerHTML = statCards([
     ["Rugs dodged", String(st.rug_bans ?? 0), (st.deployers_denied ?? 0) + " deployers denied", ""],
     ["Unrealized", un != null ? fmtSignedUSD(un) : "—", "in open positions", pnlClass(un || 0)],
-    ["Gas paid", gas != null ? usd2.format(gas) : "—", "this session", pnlClass(gas || 0)],
+    ["Gas paid", gas != null ? usd2.format(Math.abs(gas)) : "—", "this session", ""],
     ["Open", String(open), open === 1 ? "position" : "positions", ""],
   ]);
 }
@@ -897,13 +897,12 @@ function renderChartLegend(up, tw, tw20, mainLabel) {
   const legend = $("chartLegend");
   const has50 = tw && tw.present && (tw.equity_hist || []).length >= 2;
   const has20 = tw20 && tw20.present && (tw20.equity_hist || []).length >= 2;
-  // Live view (2026-10-27 follow-up): test wallets are removed, so
-  // the legend is Main-only -- but it must still render (the old
-  // early-return blanked it whenever no test wallet existed).
-  // Paper keeps the old behavior (empty when no test wallets).
-  if (!chartLiveMode && !has50 && !has20) { legend.innerHTML = ""; return; }
-  const mainDot = chartLiveMode ? liveSeriesColor(up) : (up ? "#2dd4bf" : "#fb923c");
-  let html = `<span class="dot" style="background:${mainDot}"></span>Main (${mainLabel || "BNB"})`;
+  // 2026-10-27 per user: the Main legend entry ("Main (Live total)"
+  // + its colored dot) is removed entirely. Live view therefore has
+  // no legend (test wallets are already removed there); paper keeps
+  // only its Test $50 / Test $20 entries when present.
+  if (!has50 && !has20) { legend.innerHTML = ""; return; }
+  let html = "";
   if (has50) html += `<span class="dot" style="background:${tw.net_usd < 0 ? "#808080" : "#32CD32"}"></span>Test $50 (own scale)`;
   if (has20) html += `<span class="dot" style="background:${tw20.net_usd < 0 ? "#f472b6" : "#3b82f6"}"></span>Test $20 (own scale)`;
   legend.innerHTML = html;
@@ -1018,7 +1017,7 @@ function renderLiveWallets(wallets) {
         const tok = p.token_full || p.token || "";
         const rem = Math.round((p.remaining || 0) * 100);
         return `<div class="row"><div class="main">`
-          + `<div class="sym">${esc(shortAddr(p.token || ""))}<a class="dex-link" href="https://www.geckoterminal.com/bsc/tokens/${esc(tok)}" target="_blank" rel="noopener">GeckoTerminal</a></div>`
+          + `<div class="sym">${esc(shortAddr(p.token || ""))}<a class="dex-link" href="https://www.geckoterminal.com/bsc/tokens/${esc(tok)}" target="_blank" rel="noopener"><img src="data:image/png;base64,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" alt="GeckoTerminal"></a></div>`
           + `<div class="addr">${esc(tok)}</div>`
           + `<div class="meta">${esc(p.strategy || "scalp")} · ${rem}% open</div>`
           + `</div><div class="val">${(p.size_bnb || 0).toFixed(4)} BNB</div></div>`;
