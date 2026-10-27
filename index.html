@@ -132,6 +132,23 @@
   .pnl-val { font-size: 17px; font-weight: 700; }
   .pnl-sub { font-size: 13px; color: var(--text-3); }
   .pos { color: var(--green); } .neg { color: var(--red); }
+  /* Live view (2026-10-27 reset): neon green / red + glow, scoped
+     under .live-view so the paper view keeps its teal/orange scheme.
+     Test-wallet sections keep their own colors: their #id-scoped
+     color rules still beat .live-view .pos/.neg, and the glow
+     selectors below deliberately exclude #twSection/#tw20Section. */
+  .live-view .pos { color: #39ff14; }
+  .live-view .neg { color: #ff2a2a; }
+  .live-view .pnl-val.pos { text-shadow: 0 0 10px rgba(57,255,20,0.65), 0 0 22px rgba(57,255,20,0.30); }
+  .live-view .pnl-val.neg { text-shadow: 0 0 10px rgba(255,42,42,0.65), 0 0 22px rgba(255,42,42,0.30); }
+  .live-view #stats .v.pos, .live-view #walletStats .v.pos,
+  .live-view #positions .val.pos, .live-view #closed .val.pos,
+  .live-view [id^="liveStats"] .v.pos, .live-view [id^="liveTrades"] .val.pos
+    { text-shadow: 0 0 8px rgba(57,255,20,0.55), 0 0 18px rgba(57,255,20,0.25); }
+  .live-view #stats .v.neg, .live-view #walletStats .v.neg,
+  .live-view #positions .val.neg, .live-view #closed .val.neg,
+  .live-view [id^="liveStats"] .v.neg, .live-view [id^="liveTrades"] .val.neg
+    { text-shadow: 0 0 8px rgba(255,42,42,0.55), 0 0 18px rgba(255,42,42,0.25); }
   /* Test wallet numbers match their chart lines (per user 2026-10-25):
      $50: lime green positive / mid grey negative;
      $20: blue positive / pink negative. Main wallet untouched. */
@@ -306,7 +323,7 @@
     </div>
     <section class="hero" id="hero">
       <div class="hero-body">
-        <div class="kicker">Wallet balance</div>
+        <div class="kicker" id="heroKicker">Wallet balance</div>
         <div class="equity-row"><div class="equity" id="equity">—</div><div class="equity-bnb" id="equityBnb"></div></div>
         <div class="pnl-line">
           <span class="pnl-val" id="pnl">—</span>
@@ -451,26 +468,35 @@ function render(d) {
       "https://t.me/LaunchDeskBot_Bot?start=" + (paused ? "resume" : "pause"),
       "_blank", "noopener");
   }
+  // Live view flag (2026-10-27 reset): scopes the neon/glow CSS and
+  // the live chart colors below. Paper renders without it, unchanged.
+  chartLiveMode = !!d.live_mode;
+  document.body.classList.toggle("live-view", chartLiveMode);
   // Hero
+  $("heroKicker").textContent = d.live_mode ? "Total balance" : "Wallet balance";
   $("equity").textContent = usd0.format(d.equity_usd || 0);
   const bnbPx = d.bnb_usd || 0;
   $("bnbPrice").textContent = bnbPx ? usd2.format(bnbPx) : "—";
-  $("equityBnb").textContent = (bnbPx && d.equity_usd)
-    ? (d.equity_usd / bnbPx).toFixed(4) + " BNB" : "";
+  $("equityBnb").textContent = (d.equity_bnb != null)
+    ? d.equity_bnb.toFixed(4) + " BNB"
+    : ((bnbPx && d.equity_usd)
+      ? (d.equity_usd / bnbPx).toFixed(4) + " BNB" : "");
   const pnlEl = $("pnl");
-  pnlEl.textContent = `${fmtSignedUSD(d.pnl_usd || 0)} (${(d.pnl_usd >= 0 ? "+" : "−")}${Math.abs(d.pnl_pct || 0).toFixed(1)}%)`;
-  pnlEl.className = "pnl-val " + pnlClass(d.pnl_usd || 0);
-  // Main chart line: live wallet 1 once it has a trade history, else
-  // the paper wallet. Test-wallet lines are unchanged; no other live
-  // wallet ever gets a chart line. Both histories are BNB, so the
-  // switch is unit-consistent. (A funded-but-not-yet-trading wallet 1
-  // has no history yet, so paper stays main until its first trades.)
+  const pnlUsd = d.pnl_usd || 0;
+  const pctSign = pnlUsd > 0.004 ? "+" : pnlUsd < -0.004 ? "−" : "";
+  pnlEl.textContent = `${fmtSignedUSD(pnlUsd)} (${pctSign}${Math.abs(d.pnl_pct || 0).toFixed(1)}%)`;
+  pnlEl.className = "pnl-val " + pnlClass(pnlUsd);
+  // Main chart line (2026-10-27 reset): in live mode the server
+  // already sets d.equity_hist to the live-only history (seeded at
+  // the live total), so it IS the chart -- the old W1-feed override
+  // would have drawn one wallet's cost-based line instead of the
+  // all-active-wallet total. Paper keeps the old W1/paper switch.
   const w1 = (d.live_wallets || []).find(w => w && w.pool_index === 1);
   const w1Hist = (w1 && w1.equity_hist && w1.equity_hist.length >= 2) ? w1.equity_hist : null;
-  const mainHist = w1Hist || (d.equity_hist || []);
-  const mainUp = w1Hist ? ((w1.net_usd || 0) >= 0) : up;
+  const mainHist = d.live_mode ? (d.equity_hist || []) : (w1Hist || (d.equity_hist || []));
+  const mainUp = d.live_mode ? (pnlUsd >= 0) : (w1Hist ? ((w1.net_usd || 0) >= 0) : up);
   drawChart(mainHist, mainUp, (d.test_wallet && d.test_wallet.equity_hist) || [], (d.test_wallet_20 && d.test_wallet_20.equity_hist) || []);
-  renderChartLegend(mainUp, d.test_wallet, d.test_wallet_20, w1Hist ? "Live W1" : "BNB");
+  renderChartLegend(mainUp, d.test_wallet, d.test_wallet_20, d.live_mode ? "Live total" : (w1Hist ? "Live W1" : "BNB"));
   renderTestWallet(d.test_wallet, {sec: "twSection", rule: "twRule", stats: "twStats", trades: "twTrades", addr: "twAddr"}, 50);
   renderTestWallet(d.test_wallet_20, {sec: "tw20Section", rule: "tw20Rule", stats: "tw20Stats", trades: "tw20Trades", addr: "tw20Addr"}, 20);
   renderLiveWallets(d.live_wallets || []);
@@ -526,6 +552,9 @@ function render(d) {
 }
 
 let lastHist = null, lastUp = false, lastTwHist = null, lastTw20Hist = null;
+// Set by render() from d.live_mode; drawChart + legend read it so
+// the live line/legend use neon green/red instead of teal/orange.
+let chartLiveMode = false;
 function drawChart(hist, up, twHist, tw20Hist) {
   if (hist !== undefined) { lastHist = hist; lastUp = up; lastTwHist = twHist || null; lastTw20Hist = tw20Hist || null; }
   else { hist = lastHist; up = lastUp; twHist = lastTwHist; tw20Hist = lastTw20Hist; }
@@ -553,12 +582,21 @@ function drawChart(hist, up, twHist, tw20Hist) {
   const mn = Math.min(...vals), mx = Math.max(...vals), rg = (mx - mn) || 1;
   const X = i => (i / (vals.length - 1)) * W;
   const Y = v => H * 0.88 - ((v - mn) / rg) * H * 0.7;
-  const col = up ? "#2dd4bf" : "#fb923c";
+  // Live view: neon green / red in the line's value color (both
+  // directions glow); paper keeps teal/orange. Test-wallet lines
+  // below are untouched.
+  const col = chartLiveMode ? (up ? "#39ff14" : "#ff2a2a") : (up ? "#2dd4bf" : "#fb923c");
   ctx.clearRect(0, 0, W, H);
   // area fill
   const grad = ctx.createLinearGradient(0, 0, 0, H);
-  grad.addColorStop(0, up ? "rgba(45,212,191,0.35)" : "rgba(251,146,60,0.35)");
-  grad.addColorStop(0.7, up ? "rgba(45,212,191,0.06)" : "rgba(251,191,36,0.06)");
+  if (chartLiveMode) {
+    const rgb = up ? "57,255,20" : "255,42,42";
+    grad.addColorStop(0, `rgba(${rgb},0.35)`);
+    grad.addColorStop(0.7, `rgba(${rgb},0.06)`);
+  } else {
+    grad.addColorStop(0, up ? "rgba(45,212,191,0.35)" : "rgba(251,146,60,0.35)");
+    grad.addColorStop(0.7, up ? "rgba(45,212,191,0.06)" : "rgba(251,191,36,0.06)");
+  }
   grad.addColorStop(1, "rgba(0,0,0,0)");
   ctx.beginPath();
   ctx.moveTo(X(0), Y(vals[0]));
@@ -594,8 +632,11 @@ function drawChart(hist, up, twHist, tw20Hist) {
   ctx.rect(0, 0, W * prog, H);
   ctx.clip();
   smoothPath();
-  // Neon glow when green
-  if (isUp) {
+  // Neon glow: live view glows in the value color either way;
+  // paper glows only when green (existing treatment).
+  if (chartLiveMode) {
+    ctx.shadowColor = up ? "#39ff14" : "#ff2a2a"; ctx.shadowBlur = 12 * dpr;
+  } else if (isUp) {
     ctx.shadowColor = "#2dd4bf"; ctx.shadowBlur = 12 * dpr;
   }
   ctx.strokeStyle = col; ctx.lineWidth = 2 * dpr;
@@ -611,7 +652,8 @@ function drawChart(hist, up, twHist, tw20Hist) {
   // last point (with glow when green)
   ctx.beginPath();
   ctx.arc(X(vals.length - 1), Y(vals[vals.length - 1]), 3 * dpr, 0, 7);
-  if (isUp) { ctx.shadowColor = "#2dd4bf"; ctx.shadowBlur = 16 * dpr; }
+  if (chartLiveMode) { ctx.shadowColor = up ? "#39ff14" : "#ff2a2a"; ctx.shadowBlur = 16 * dpr; }
+  else if (isUp) { ctx.shadowColor = "#2dd4bf"; ctx.shadowBlur = 16 * dpr; }
   ctx.fillStyle = col; ctx.fill();
   ctx.shadowBlur = 0;
   // Test-wallet lines: each on its OWN scale (their ~$50/~$20 ranges
@@ -817,7 +859,7 @@ function renderWalletStats(d) {
   $("walletStats").innerHTML = statCards([
     ["Rugs dodged", String(st.rug_bans ?? 0), (st.deployers_denied ?? 0) + " deployers denied", ""],
     ["Unrealized", un != null ? fmtSignedUSD(un) : "—", "in open positions", pnlClass(un || 0)],
-    ["Gas paid", gas != null ? usd2.format(gas) : "—", "this session", ""],
+    ["Gas paid", gas != null ? usd2.format(gas) : "—", "this session", pnlClass(gas || 0)],
     ["Open", String(open), open === 1 ? "position" : "positions", ""],
   ]);
 }
@@ -827,7 +869,8 @@ function renderChartLegend(up, tw, tw20, mainLabel) {
   const has50 = tw && tw.present && (tw.equity_hist || []).length >= 2;
   const has20 = tw20 && tw20.present && (tw20.equity_hist || []).length >= 2;
   if (!has50 && !has20) { legend.innerHTML = ""; return; }
-  let html = `<span class="dot" style="background:${up ? "#2dd4bf" : "#fb923c"}"></span>Main (${mainLabel || "BNB"})`;
+  const mainDot = chartLiveMode ? (up ? "#39ff14" : "#ff2a2a") : (up ? "#2dd4bf" : "#fb923c");
+  let html = `<span class="dot" style="background:${mainDot}"></span>Main (${mainLabel || "BNB"})`;
   if (has50) html += `<span class="dot" style="background:${tw.net_usd < 0 ? "#808080" : "#32CD32"}"></span>Test $50 (own scale)`;
   if (has20) html += `<span class="dot" style="background:${tw20.net_usd < 0 ? "#f472b6" : "#3b82f6"}"></span>Test $20 (own scale)`;
   legend.innerHTML = html;
