@@ -171,6 +171,11 @@
   .stat .k { font-size: 11px; font-weight: 600; color: var(--text-3);
     text-transform: uppercase; letter-spacing: 0.08em; }
   .stat .v { font-size: 21px; font-weight: 700; margin-top: 5px; letter-spacing: -0.01em; }
+  /* Round 3: the Equity amount is always white -- it carries no
+     .pos/.neg sign class (see renderTestWallet), and this rule pins
+     it against any inherited or sign-colored value. Net/P&L keep
+     their red/green; chart lines/gradients are untouched. */
+  .stat .v.equity-val { color: #ffffff; }
   .stat .s { font-size: 12px; color: var(--text-3); margin-top: 2px; }
   /* ---------- sections ---------- */
   .section { background: rgba(24,24,24,0.9); border: 1px solid #2a2a2a;
@@ -954,7 +959,7 @@ function renderTestWallet(tw, ids, startUsd) {
   }
   const wr = tw.win_rate != null ? tw.win_rate.toFixed(0) + "%" : "—";
   $(ids.stats).innerHTML = statCards([
-    ["Equity", usd2.format(tw.equity_usd || 0), "cash " + usd2.format(tw.cash_usd || 0), pnlClass(tw.net_usd || 0)],
+    ["Equity", usd2.format(tw.equity_usd || 0), "cash " + usd2.format(tw.cash_usd || 0), "equity-val"],
     ["Net", fmtSignedUSD(tw.net_usd || 0), (tw.net_usd >= 0 ? "+" : "−") + Math.abs(tw.net_pct || 0).toFixed(1) + "% of $" + startUsd, pnlClass(tw.net_usd || 0)],
     ["Win rate", wr, `${tw.wins || 0}W / ${tw.losses || 0}L`, ""],
     ["Trades", String(tw.total_closes != null ? tw.total_closes : 0), `${tw.total_entries != null ? tw.total_entries : 0} entries · ${tw.open_positions || 0} open`, ""],
