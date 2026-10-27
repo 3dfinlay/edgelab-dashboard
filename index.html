@@ -132,23 +132,15 @@
   .pnl-val { font-size: 17px; font-weight: 700; }
   .pnl-sub { font-size: 13px; color: var(--text-3); }
   .pos { color: var(--green); } .neg { color: var(--red); }
-  /* Live view (2026-10-27 reset): neon green / red + glow, scoped
+  /* Live view (2026-10-27 reset): neon green / red text colors, scoped
      under .live-view so the paper view keeps its teal/orange scheme.
      Test-wallet sections keep their own colors: their #id-scoped
-     color rules still beat .live-view .pos/.neg, and the glow
-     selectors below deliberately exclude #twSection/#tw20Section. */
+     color rules still beat .live-view .pos/.neg.
+     2026-10-27 per user: NO text glow anywhere on the dashboard --
+     only chart lines glow. The text-shadow rules that used to sit
+     here were removed; the colors above are unchanged. */
   .live-view .pos { color: #39ff14; }
   .live-view .neg { color: #ff2a2a; }
-  .live-view .pnl-val.pos { text-shadow: 0 0 10px rgba(57,255,20,0.65), 0 0 22px rgba(57,255,20,0.30); }
-  .live-view .pnl-val.neg { text-shadow: 0 0 10px rgba(255,42,42,0.65), 0 0 22px rgba(255,42,42,0.30); }
-  .live-view #stats .v.pos, .live-view #walletStats .v.pos,
-  .live-view #positions .val.pos, .live-view #closed .val.pos,
-  .live-view [id^="liveStats"] .v.pos, .live-view [id^="liveTrades"] .val.pos
-    { text-shadow: 0 0 8px rgba(57,255,20,0.55), 0 0 18px rgba(57,255,20,0.25); }
-  .live-view #stats .v.neg, .live-view #walletStats .v.neg,
-  .live-view #positions .val.neg, .live-view #closed .val.neg,
-  .live-view [id^="liveStats"] .v.neg, .live-view [id^="liveTrades"] .val.neg
-    { text-shadow: 0 0 8px rgba(255,42,42,0.55), 0 0 18px rgba(255,42,42,0.25); }
   /* Test wallet numbers match their chart lines (per user 2026-10-25):
      $50: lime green positive / mid grey negative;
      $20: blue positive / pink negative. Main wallet untouched. */
