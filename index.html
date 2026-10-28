@@ -45,6 +45,12 @@
     pointer-events: none; z-index: 0;
     background: linear-gradient(135deg,
       rgba(45,212,191,0.30) 0%, rgba(45,212,191,0) 50%); }
+  /* Negative main line (2026-10-27): the top-left wash follows the
+     main chart line's sign -- dark red (#8B0000) when negative, the
+     green above unchanged when positive. Toggled by render(). */
+  body.chart-neg::after {
+    background: linear-gradient(135deg,
+      rgba(139,0,0,0.30) 0%, rgba(139,0,0,0) 50%); }
   #dash { position: relative; z-index: 1; }
   #refreshBtn { position: absolute; top: 12px; left: 14px; z-index: 6;
     display: inline-flex; align-items: center; gap: 6px;
@@ -492,6 +498,9 @@ function render(d) {
   const w1Hist = (w1 && w1.equity_hist && w1.equity_hist.length >= 2) ? w1.equity_hist : null;
   const mainHist = d.live_mode ? (d.equity_hist || []) : (w1Hist || (d.equity_hist || []));
   const mainUp = d.live_mode ? (pnlUsd >= 0) : (w1Hist ? ((w1.net_usd || 0) >= 0) : up);
+  // Top-left wash follows the main chart line's sign (2026-10-27):
+  // dark red when the main line is negative, green otherwise.
+  document.body.classList.toggle("chart-neg", !mainUp);
   // Live view (2026-10-27 follow-up): test wallets are removed --
   // no test chart lines, no test legend entries, no test sections.
   // Paper renders them unchanged (same shared page, gated here).
