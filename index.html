@@ -380,7 +380,7 @@
       </div>
     </div>
     <button id="pauseBtn" type="button">⏸ Pause trading</button>
-    <div class="foot"><span class="live-dot"></span><span id="updated">—</span></div>
+    <div class="foot"><span class="live-dot"></span><span id="updated">—</span><span id="feedState"></span></div>
   </main>
   <nav id="tabbar"><div class="tabs">
     <button type="button" data-tab="wallet" class="active" aria-label="Wallet">
@@ -762,6 +762,105 @@ function drawChart(hist, up, twHist, tw20Hist) {
 }
 
 let password = null, timer = null;
+/* ================= realtime live feed (Option B) ================= */
+// Live-only WebSocket stream from the PC watcher (livefeed.py). The
+// watcher broadcasts AES-GCM ciphertext under the SAME dashboard key
+// as data.json, so this reuses decryptPayload/password and learns
+// nothing without the password. Empty FEED_URL = stream disabled and
+// the page stays on the 2-minute poll. At deploy, FEED_URL is set to
+// the funnel URL; a quick-tunnel URL can instead arrive in data.json
+// as live_feed_url (read on each poll).
+const FEED_URL = "wss://desktop-2uoqdfp.tail6165fd.ts.net";
+let lastFull = null, feedSocket = null, feedUrl = null, feedRetryMs = 3000, feedTimer = null;
+function setFeedState(txt) {
+  const el = $("feedState");
+  if (el) el.textContent = txt ? " · " + txt : "";
+}
+function mergeLiveFeed(d, p) {
+  // Overlay ONLY the live fields; stats, closed trades, settings and
+  // test wallets keep the 2-minute cadence in v1.
+  const usd = (bnb) => (d.bnb_usd == null || bnb == null ? null : Math.round(bnb * d.bnb_usd * 100) / 100);
+  const r2 = (x) => (x == null ? null : Math.round(x * 100) / 100);
+  d.emergency_paused = !!p.emergency_paused;
+  d.live_wallets = (p.live_wallets || []).map((w) => {
+    const out = Object.assign({}, w);
+    out.balance_usd = usd(w.balance_bnb);
+    if (w.has_feed) {
+      out.seed_usd = usd(w.seed_bnb);
+      out.equity_usd = usd(w.equity_bnb);
+      out.cash_usd = usd(w.cash_bnb);
+      out.net_usd = (out.equity_usd != null && out.seed_usd != null) ? r2(out.equity_usd - out.seed_usd) : null;
+      out.net_pct = (out.net_usd != null && out.seed_usd) ? r2(out.net_usd / out.seed_usd * 100) : null;
+      out.trades = (w.trades || []).map((t) => Object.assign({}, t, { realized_usd: usd(t.realized_bnb) }));
+    }
+    return out;
+  });
+  d.positions = (p.positions || []).map((pos) => Object.assign({}, pos, { unreal_usd: usd(pos.unreal_bnb) }));
+  d.equity_bnb = p.equity_bnb;
+  d.equity_usd = usd(p.equity_bnb);
+  d.pnl_bnb = p.pnl_bnb;
+  d.pnl_usd = usd(p.pnl_bnb);
+  d.live_capital_bnb = p.live_capital_bnb;
+  d.pnl_pct = d.live_capital_bnb ? r2(p.pnl_bnb / d.live_capital_bnb * 100) : 0.0;
+  let tot = 0;
+  (d.live_wallets || []).forEach((w) => { if (w.activated && w.balance_bnb != null) tot += w.balance_bnb; });
+  d.live_total_balance_bnb = Math.round(tot * 1e6) / 1e6;
+  d.live_total_balance_usd = usd(d.live_total_balance_bnb);
+  d.live_active_wallets = p.live_active_wallets;
+  const sentEpoch = new Date(p.sent_at).getTime() / 1000;
+  d.data_age_s = Math.max(0, Math.round((Date.now() / 1000 - sentEpoch) * 10) / 10);
+  if (p.equity_bnb > 0) {
+    const hist = d.equity_hist || [];
+    if (!hist.length || hist[hist.length - 1].t < sentEpoch) {
+      hist.push({ t: sentEpoch, e: p.equity_bnb });
+      d.equity_hist = hist.slice(-720);
+    }
+  }
+}
+function connectFeed(url) {
+  if (!url) return;
+  if (feedSocket && feedSocket.readyState <= 1 && feedUrl === url) return;
+  if (feedSocket) { try { feedSocket.close(); } catch (e) {} feedSocket = null; }
+  feedUrl = url; feedRetryMs = 3000;
+  let ws;
+  try { ws = new WebSocket(url); } catch (e) { scheduleFeedReconnect(); return; }
+  feedSocket = ws;
+  ws.onopen = () => { feedRetryMs = 3000; setFeedState("LIVE · stream"); };
+  ws.onmessage = async (ev) => {
+    try {
+      const msg = await decryptPayload(JSON.parse(ev.data), password);
+      if (!msg || msg.feed !== "live") return;
+      if (msg.type === "standby") {
+        if (lastFull) { lastFull.emergency_paused = !!msg.emergency_paused; render(lastFull); }
+        setFeedState("waiting for live trading");
+        return;
+      }
+      if (msg.type !== "snapshot" || !lastFull || !lastFull.live_mode) return;
+      mergeLiveFeed(lastFull, msg);
+      render(lastFull);
+      setFeedState("LIVE · stream");
+    } catch (e) { console.warn("live feed message failed:", e); }
+  };
+  ws.onclose = () => {
+    if (feedSocket === ws) {
+      feedSocket = null;
+      setFeedState("delayed · 2-min data");
+      scheduleFeedReconnect();
+    }
+  };
+  ws.onerror = () => { try { ws.close(); } catch (e) {} };
+}
+function scheduleFeedReconnect() {
+  if (feedTimer) return;
+  feedTimer = setTimeout(() => { feedTimer = null; if (feedUrl) connectFeed(feedUrl); }, feedRetryMs);
+  feedRetryMs = Math.min(feedRetryMs * 2, 30000);
+}
+function ensureFeed() {
+  const url = FEED_URL || (lastFull && lastFull.live_feed_url) || null;
+  if (!url) { setFeedState(""); return; }
+  if (feedUrl !== url && feedSocket) { try { feedSocket.close(); } catch (e) {} feedSocket = null; }
+  connectFeed(url);
+}
 // Chart animation state
 let chartFirstDraw = true, chartDrawProgress = 0, chartWasUp = null;
 let confetti = [], chartAnimFrame = null;
@@ -804,7 +903,10 @@ async function fetchAndRender() {
   try {
     const r = await fetch("https://3dfinlay.github.io/edgelab-dashboard/data.json?_=" + Date.now(), { cache: "no-store" });
     if (!r.ok) throw new Error("fetch " + r.status);
-    render(await decryptPayload(await r.json(), password));
+    const d = await decryptPayload(await r.json(), password);
+    lastFull = d;
+    render(d);
+    ensureFeed();
   } catch (e) { console.warn("refresh failed:", e); }
 }
 const refreshBtn = $("refreshBtn");
