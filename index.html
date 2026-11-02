@@ -689,6 +689,14 @@ function mergeLiveFeed(d, p) {
   const usd = (bnb) => (d.bnb_usd == null || bnb == null ? null : Math.round(bnb * d.bnb_usd * 100) / 100);
   const r2 = (x) => (x == null ? null : Math.round(x * 100) / 100);
   d.emergency_paused = !!p.emergency_paused;
+  // Snapshot wallet nets, keyed by address (2026-11-02 hero-flicker
+  // fix): the feed's equity-minus-seed nets ignore the display
+  // reset, so snapshot nets are carried across the merge below.
+  const snapNets = {};
+  (d.live_wallets || []).forEach((w) => {
+    const a = (w.wallet_address || w.address || "").toLowerCase();
+    if (a) snapNets[a] = { net_usd: w.net_usd, net_pct: w.net_pct };
+  });
   d.live_wallets = (p.live_wallets || []).map((w) => {
     const out = Object.assign({}, w);
     out.balance_usd = usd(w.balance_bnb);
@@ -696,8 +704,15 @@ function mergeLiveFeed(d, p) {
       out.seed_usd = usd(w.seed_bnb);
       out.equity_usd = usd(w.equity_bnb);
       out.cash_usd = usd(w.cash_bnb);
-      out.net_usd = (out.equity_usd != null && out.seed_usd != null) ? r2(out.equity_usd - out.seed_usd) : null;
-      out.net_pct = (out.net_usd != null && out.seed_usd) ? r2(out.net_usd / out.seed_usd * 100) : null;
+      // Nets stay on the data.json snapshot: the feed's recompute
+      // ignores the display-session reset. Wallets the snapshot has
+      // never seen fall back to the recompute (no pre-reset history).
+      const snap = snapNets[(w.wallet_address || w.address || "").toLowerCase()];
+      if (snap) { out.net_usd = snap.net_usd; out.net_pct = snap.net_pct; }
+      else {
+        out.net_usd = (out.equity_usd != null && out.seed_usd != null) ? r2(out.equity_usd - out.seed_usd) : null;
+        out.net_pct = (out.net_usd != null && out.seed_usd) ? r2(out.net_usd / out.seed_usd * 100) : null;
+      }
       out.trades = (w.trades || []).map((t) => Object.assign({}, t, { realized_usd: usd(t.realized_bnb) }));
     }
     return out;
@@ -705,10 +720,11 @@ function mergeLiveFeed(d, p) {
   d.positions = (p.positions || []).map((pos) => Object.assign({}, pos, { unreal_usd: usd(pos.unreal_bnb) }));
   d.equity_bnb = p.equity_bnb;
   d.equity_usd = usd(p.equity_bnb);
-  d.pnl_bnb = p.pnl_bnb;
-  d.pnl_usd = usd(p.pnl_bnb);
-  d.live_capital_bnb = p.live_capital_bnb;
-  d.pnl_pct = d.live_capital_bnb ? r2(p.pnl_bnb / d.live_capital_bnb * 100) : 0.0;
+  // Hero P&L stays on the data.json snapshot (2026-11-02 hero-flicker
+  // fix): the feed carries the session's lifetime P&L, which ignores
+  // the display-session reset and flickered the hero to -92.6%.
+  // The snapshot (30s fetch) remains the P&L authority; the feed
+  // still refreshes equity, positions, wallets, and history below.
   let tot = 0;
   (d.live_wallets || []).forEach((w) => { if (w.activated && w.balance_bnb != null) tot += w.balance_bnb; });
   d.live_total_balance_bnb = Math.round(tot * 1e6) / 1e6;
