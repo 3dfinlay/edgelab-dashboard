@@ -397,7 +397,7 @@
           <div class="step"><div class="k">Admitted</div><div class="v" id="discAdmitted">---</div></div>
           <div class="step"><div class="k">Resolved</div><div class="v" id="discResolved">---</div></div>
         </div>
-        <p class="note">This snapshot carries no discovery funnel fields, so no counts are shown. Full breakdown on the Discovery tab. GeckoTerminal discovery can lag by minutes. Once a token is seen, the decision process is instant.</p>
+        <p class="note" id="discNote">This snapshot carries no discovery funnel fields, so no counts are shown. Full breakdown on the Discovery tab. GeckoTerminal discovery can lag by minutes. Once a token is seen, the decision process is instant.</p>
       </section>
       <section class="section">
         <h3>Recent closes</h3>
@@ -459,16 +459,26 @@
     <div class="tabpage" id="tab-discovery" hidden>
       <div class="page-head">
         <h2>Discovery</h2>
-        <p>What the discovery engine is seeing and why tokens do or do not reach execution. Counts below read Not recorded because this snapshot carries no discovery funnel fields.</p>
+        <p id="discTabNote">What the discovery engine is seeing and why tokens do or do not reach execution. Counts below read Not recorded because this snapshot carries no discovery funnel fields.</p>
       </div>
       <section class="section">
         <h3>Funnel</h3>
         <div class="funnel">
-          <div class="step"><div class="k">Watched</div><div class="v">---</div></div>
-          <div class="step"><div class="k">Admitted</div><div class="v">---</div></div>
-          <div class="step"><div class="k">Resolved</div><div class="v">---</div></div>
+          <div class="step"><div class="k">Watched</div><div class="v" id="discTabWatched">---</div></div>
+          <div class="step"><div class="k">Admitted</div><div class="v" id="discTabAdmitted">---</div></div>
+          <div class="step"><div class="k">Resolved</div><div class="v" id="discTabResolved">---</div></div>
         </div>
-        <p class="note">Watched, admitted, and resolved counts, conversion rates, and gate-failure reasons are Not recorded in this snapshot. Nothing here is estimated. When the snapshot carries them, they render in this funnel.</p>
+        <p class="note" id="discFunnelNote">Watched, admitted, and resolved counts, conversion rates, and gate-failure reasons are Not recorded in this snapshot. Nothing here is estimated. When the snapshot carries them, they render in this funnel.</p>
+      </section>
+      <section class="section">
+        <h3>Recent sightings</h3>
+        <p class="note" id="discWindow"></p>
+        <div id="discRecent"></div>
+      </section>
+      <section class="section">
+        <h3>Gate failures</h3>
+        <div id="discGates"></div>
+        <p class="note">Failing only lp_concentrated is the scalp lane's admission pattern, not a rejection — see each token's decision. Nothing here is estimated.</p>
       </section>
       <section class="section">
         <h3>Gate behavior</h3>
@@ -930,6 +940,51 @@ function render(d) {
   const pctSign = pnlUsd > 0.004 ? "+" : pnlUsd < -0.004 ? "−" : "";
   pnlEl.textContent = `${fmtSignedUSD(pnlUsd)} (${pctSign}${Math.abs(d.pnl_pct || 0).toFixed(1)}%)`;
   pnlEl.className = "pnl-val " + pnlClass(pnlUsd);
+  /* discovery funnel (Overview snapshot + Discovery tab) */
+  const disc = d.discovery || null;
+  const fmtDiscTs = (ts) => {
+    if (!ts) return "—";
+    try { return new Date(ts).toISOString().slice(0, 16).replace("T", " ") + " UTC"; }
+    catch (e) { return String(ts); }
+  };
+  if (disc && disc.funnel) {
+    const df = disc.funnel;
+    [["discWatched", df.watched], ["discTabWatched", df.watched],
+     ["discAdmitted", df.admitted], ["discTabAdmitted", df.admitted],
+     ["discResolved", df.resolved], ["discTabResolved", df.resolved]].forEach(([id, v]) => {
+      const el = $(id);
+      if (el) el.textContent = String(v);
+    });
+    const dw = disc.window || {};
+    const winTxt = (dw.lines != null)
+      ? `${dw.parsed} of ${dw.lines} records · ${fmtDiscTs(dw.first_ts)} – ${fmtDiscTs(dw.last_ts)} · ${dw.truncated ? "last 5000 lines of the flight journal" : "full flight journal since the recorder started"}`
+      : "";
+    const winEl = $("discWindow");
+    if (winEl) winEl.textContent = winTxt;
+    const noteEl = $("discNote");
+    if (noteEl) noteEl.textContent = `Discovery funnel for this window: ${df.watched} watched, ${df.admitted} admitted, ${df.resolved} resolved. ${winTxt}. GeckoTerminal discovery can lag by minutes. Once a token is seen, the decision process is instant.`;
+    const tabNote = $("discTabNote");
+    if (tabNote) tabNote.textContent = "What the discovery engine is seeing and why tokens do or do not reach execution. Counts below come from the flight journal tail — nothing here is estimated.";
+    const funNote = $("discFunnelNote");
+    if (funNote) funNote.textContent = `Watched, admitted, and resolved counts for this window. Scored: ${df.scored}; awaiting an admission decision: ${df.pending}. Not yet resolved is not the same as rejected by a gate.`;
+    const recEl = $("discRecent");
+    if (recEl) {
+      const rows = disc.recent || [];
+      recEl.innerHTML = rows.length ? rows.map((t) => {
+        const name = (t.symbol && !t.symbol.startsWith("0x")) ? esc(t.symbol) : shortAddr(t.token);
+        const dec = (t.decision ? esc(t.decision).replace(/_/g, " ") : "pending");
+        const gates = (t.failed_gates && t.failed_gates.length) ? esc(t.failed_gates.join(", ")) : "none";
+        const sc = (t.score != null) ? String(t.score) : "—";
+        const link = t.pair ? ` <a href="https://www.geckoterminal.com/bsc/pools/${esc(t.pair)}" target="_blank" rel="noopener">pool</a>` : "";
+        return `<div class="row"><div class="main"><div class="sym">${name}${link}</div><div class="addr">${esc(t.token || "")}</div><div class="meta"><span>score ${sc}</span><span>gates: ${gates}</span>${t.first_seen ? `<span>${fmtDiscTs(t.first_seen)}</span>` : ""}</div></div><div class="val">${dec}</div></div>`;
+      }).join("") : `<div class="empty">No sightings in this window</div>`;
+    }
+    const gateEl = $("discGates");
+    if (gateEl) {
+      const gs = disc.gate_failures || [];
+      gateEl.innerHTML = gs.length ? gs.map((g) => `<div class="row"><div class="main"><div class="sym">${esc(g.gate)}</div></div><div class="val">${g.count}</div></div>`).join("") : `<div class="empty">No gate failures in this window</div>`;
+    }
+  }
   /* chart */
   const up = pnlUsd >= 0;
   const w1 = (d.live_wallets || []).find(w => w && w.pool_index === 1);
